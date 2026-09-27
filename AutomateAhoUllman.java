@@ -2,7 +2,7 @@ public class AutomateAhoUllman {
     private static final int MAX_ETATS = 100;
     private static final int MAX_SYMBOLES = 256;
 
-    private enum TypeNoeud {
+    enum TypeNoeud {
         CARACTERE,
         UNION,
         CONCAT,
@@ -10,7 +10,7 @@ public class AutomateAhoUllman {
         ALTERNATIVE
     }
 
-    private static class Noeud {
+    public static class Noeud {
         private final TypeNoeud type;
         private final char valeur;
         private final int position;
@@ -18,7 +18,7 @@ public class AutomateAhoUllman {
         private final Noeud gauche;
         private final Noeud droit;
 
-        private Noeud(TypeNoeud type, char valeur, Noeud gauche, Noeud droit) {
+        Noeud(TypeNoeud type, char valeur, Noeud gauche, Noeud droit) {
             this.type = type;
             this.valeur = valeur;
             this.position = 0;

@@ -2,6 +2,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+// TODO: faire une interface de pile pour faire plus propre
+// TODO: optimisation des algos
+
 public class Egrep {
     /**
      * encapsultation de l'état courant de la pile et de la sortie 
@@ -16,9 +19,41 @@ public class Egrep {
             this.output = output;
         }
     }
+    /**
+     * Construction de l'arbre représentant l'expression regex passée
+     * @pre Suppose que input forme une regex correct
+     * @param input expression regex
+     * @return arbre AST représentant la regex
+     */
+    static RegexTree regexToAst(String input) {
+        String regexPostFixe = shuntingYard(input);
+        List<RegexTree> stack = new ArrayList<>();
 
-    static void regexToAst(String input) {
-        //TODO
+        for(char c : regexPostFixe.toCharArray()){
+
+            if(c == '*'){
+                // pop
+                RegexTree topNode = stack.remove(stack.size() - 1);
+                stack.add(new RegexTree.Etoile(topNode));
+            }
+            else if(c == '.'){
+                // pop
+                RegexTree topNode = stack.remove(stack.size() - 1);
+                RegexTree secTopNode = stack.remove(stack.size() - 1);
+                stack.add(new RegexTree.Concat(secTopNode, topNode));
+            }else if(c == '|'){
+                // TODO: redondance avec if précédent
+                RegexTree topNode = stack.remove(stack.size() - 1);
+                RegexTree secTopNode = stack.remove(stack.size() - 1);
+                stack.add(new RegexTree.Union(secTopNode, topNode));
+            }
+            else{
+                // ASCII
+                stack.add(new RegexTree.Feuille(c));
+            }
+        }
+        // d'après précondition on est sure d'avoir qu'un élement restant
+        return stack.get(0);
     }
 
     /**
@@ -92,6 +127,10 @@ public class Egrep {
         }
 
         return new PopResult(stack, output.toString());
+    }
+
+    public static void main(String[] args) {
+        System.out.println(regexToAst("ab*c.|"));
     }
 
 }
