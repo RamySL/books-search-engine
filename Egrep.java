@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -15,18 +14,17 @@ public class Egrep {
         }
     }
 
-    static void f() {
-        String input = "a|b*";
-        List<String> output = Arrays.asList("|", "a", "*", "b");
-        System.out.println(output);
-    }
-
     static void regexToAst(String input) {
 
     }
 
-    // * > . > |
-    // production de notation post fixe
+    /**
+     * Algorithme de shuntingYard pour production de notation post fixe.</br>
+     * Il prend en compte les regex simple, non étendu avec les règles de priorité
+     * suivantes : '*' > '.' > '|'
+     * @param input expression regex
+     * @return expression regex en notation post fixe (polonaise inverse)
+     */
     // @FIXME : les parenthèse à traiter
     static String shuntingYard(String input) {
         StringBuilder output = new StringBuilder();
@@ -67,7 +65,12 @@ public class Egrep {
         }
         return output.toString() + reste.toString();
     }
-
+    /**
+     * 
+     * @param stack Pile des charactères de l'expression regex
+     * @param ops les opérateurs à dépiler
+     * @return
+     */
     static PopResult popInfOp(List<Character> stack, String ops) {
         StringBuilder output = new StringBuilder();
         char curr;
