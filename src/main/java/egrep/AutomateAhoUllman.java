@@ -1,3 +1,5 @@
+package egrep;
+
 public class AutomateAhoUllman {
     private static final int MAX_ETATS = 100;
     private static final int MAX_SYMBOLES = 256;

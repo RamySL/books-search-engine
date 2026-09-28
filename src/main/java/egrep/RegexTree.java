@@ -1,3 +1,5 @@
+package egrep;
+
 /**
  * Arbre syntaxique d'une regex simple, non étendue : '|', '.' et '*'.</br>
  * L'arité de chaque opérateur est portée par le type.
