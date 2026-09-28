@@ -1,202 +1,223 @@
 package egrep;
 
-public class AutomateAhoUllman {
-    private static final int MAX_ETATS = 100;
-    private static final int MAX_SYMBOLES = 256;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
-    enum TypeNoeud {
-        CARACTERE,
-        UNION,
-        CONCAT,
-        ETOILE,
-        ALTERNATIVE
-    }
+/**
+ * Automate fini non-déterministe avec epsilon-transitions (epsilon-AFN),
+ * construit à partir d'un {@link RegexTree} selon la méthode d'Aho-Ullman.</br>
+ * Les états sont numérotés de 0 à {@code nbEtats() - 1}. Par construction,
+ * l'automate a un unique état initial et un unique état final, et chaque état
+ * a au plus une transition étiquetée par un caractère ou au plus deux
+ * epsilon-transitions sortantes.
+ */
+public final class AutomateAhoUllman {
 
-    public static class Noeud {
-        private final TypeNoeud type;
-        private final char valeur;
-        private final int position;
-        private final boolean nullable;
-        private final Noeud gauche;
-        private final Noeud droit;
-
-        Noeud(TypeNoeud type, char valeur, Noeud gauche, Noeud droit) {
-            this.type = type;
-            this.valeur = valeur;
-            this.position = 0;
-            this.nullable = false;
-            this.gauche = gauche;
-            this.droit = droit;
+    /** Transition étiquetée par un caractère vers l'état destination. */
+    public record Transition(char symbole, int destination) {
+        @Override
+        public String toString() {
+            return "--" + symbole + "--> q" + destination;
         }
     }
 
-    private static class Automate {
-        private int nbEtats;
-        private int etatInitial;
-        private final boolean[] etatsFinaux = new boolean[MAX_ETATS];
-        private final boolean[][][] transitions =
-                new boolean[MAX_ETATS][MAX_SYMBOLES][MAX_ETATS];
-        private final boolean[][] epsilon =
-                new boolean[MAX_ETATS][MAX_ETATS];
+    /** Sous-automate associé à un sous-arbre : son état d'entrée et de sortie. */
+    private record Fragment(int entree, int sortie) {}
+
+    // transitions.get(q) : transitions étiquetées sortant de q
+    private final List<List<Transition>> transitions = new ArrayList<>();
+    // epsilons.get(q) : destinations des epsilon-transitions sortant de q
+    private final List<List<Integer>> epsilons = new ArrayList<>();
+    private int etatInitial;
+    private int etatFinal;
+
+    private AutomateAhoUllman() {
     }
 
-    private static class Fragment {
-        private final int entree;
-        private final int sortie;
-
-        private Fragment(int entree, int sortie) {
-            this.entree = entree;
-            this.sortie = sortie;
-        }
+    /**
+     * Construit l'epsilon-AFN reconnaissant le langage décrit par l'arbre.
+     * @param arbre arbre syntaxique de la regex, non null
+     * @return l'automate d'Aho-Ullman correspondant
+     */
+    public static AutomateAhoUllman depuisArbre(RegexTree arbre) {
+        AutomateAhoUllman automate = new AutomateAhoUllman();
+        Fragment resultat = automate.construire(arbre);
+        automate.etatInitial = resultat.entree();
+        automate.etatFinal = resultat.sortie();
+        return automate;
     }
 
-    private static int nouvelEtat(Automate automate) {
-        if (automate.nbEtats >= MAX_ETATS) {
-            return -1;
-        }
-        return automate.nbEtats++;
-    }
-
-    private static void ajouterTransition(
-            Automate automate, int source, char symbole, int destination) {
-        if (source >= 0 && destination >= 0 && symbole < MAX_SYMBOLES) {
-            automate.transitions[source][symbole][destination] = true;
-        }
-    }
-
-    private static void ajouterEpsilon(
-            Automate automate, int source, int destination) {
-        if (source >= 0 && destination >= 0) {
-            automate.epsilon[source][destination] = true;
-        }
-    }
-
-    private static Fragment construireFragment(Noeud noeud, Automate automate) {
-        if (noeud == null) {
-            return new Fragment(-1, -1);
-        }
-
-        Fragment fragment = new Fragment(
-                nouvelEtat(automate), nouvelEtat(automate));
-        if (fragment.entree < 0 || fragment.sortie < 0) {
-            return new Fragment(-1, -1);
-        }
-
-        if (noeud.type == TypeNoeud.CARACTERE) {
-            ajouterTransition(automate, fragment.entree,
-                    noeud.valeur, fragment.sortie);
-            return fragment;
-        }
-
-        if (noeud.type == TypeNoeud.ETOILE) {
-            Fragment enfant = construireFragment(noeud.gauche, automate);
-            if (enfant.entree < 0) {
-                return new Fragment(-1, -1);
+    /**
+     * Construction récursive d'Aho-Ullman : chaque sous-arbre produit un
+     * fragment à une entrée et une sortie, que le noeud parent recolle.
+     */
+    private Fragment construire(RegexTree noeud) {
+        return switch (noeud) {
+            // entree --c--> sortie
+            case RegexTree.Feuille f -> {
+                int entree = nouvelEtat();
+                int sortie = nouvelEtat();
+                ajouterTransition(entree, f.c(), sortie);
+                yield new Fragment(entree, sortie);
             }
-
-            ajouterEpsilon(automate, fragment.entree, fragment.sortie);
-            ajouterEpsilon(automate, fragment.entree, enfant.entree);
-            ajouterEpsilon(automate, enfant.sortie, enfant.entree);
-            ajouterEpsilon(automate, enfant.sortie, fragment.sortie);
-            return fragment;
-        }
-
-        Fragment gauche = construireFragment(noeud.gauche, automate);
-        Fragment droite = construireFragment(noeud.droit, automate);
-        if (gauche.entree < 0 || droite.entree < 0) {
-            return new Fragment(-1, -1);
-        }
-
-        if (noeud.type == TypeNoeud.CONCAT) {
-            ajouterEpsilon(automate, fragment.entree, gauche.entree);
-            ajouterEpsilon(automate, gauche.sortie, droite.entree);
-            ajouterEpsilon(automate, droite.sortie, fragment.sortie);
-        } else {
-            // UNION et ALTERNATIVE sont construits comme une union.
-            ajouterEpsilon(automate, fragment.entree, gauche.entree);
-            ajouterEpsilon(automate, fragment.entree, droite.entree);
-            ajouterEpsilon(automate, gauche.sortie, fragment.sortie);
-            ajouterEpsilon(automate, droite.sortie, fragment.sortie);
-        }
-        return fragment;
+            // gauche.sortie --eps--> droit.entree, sans nouvel état
+            case RegexTree.Concat c -> {
+                Fragment gauche = construire(c.gauche());
+                Fragment droit = construire(c.droit());
+                ajouterEpsilon(gauche.sortie(), droit.entree());
+                yield new Fragment(gauche.entree(), droit.sortie());
+            }
+            // nouvelle entrée vers les deux branches, les deux branches vers
+            // une nouvelle sortie
+            case RegexTree.Union u -> {
+                int entree = nouvelEtat();
+                Fragment gauche = construire(u.gauche());
+                Fragment droit = construire(u.droit());
+                int sortie = nouvelEtat();
+                ajouterEpsilon(entree, gauche.entree());
+                ajouterEpsilon(entree, droit.entree());
+                ajouterEpsilon(gauche.sortie(), sortie);
+                ajouterEpsilon(droit.sortie(), sortie);
+                yield new Fragment(entree, sortie);
+            }
+            // on peut sauter le fils (mot vide) ou le répéter autant qu'on veut
+            case RegexTree.Etoile e -> {
+                int entree = nouvelEtat();
+                Fragment fils = construire(e.fils());
+                int sortie = nouvelEtat();
+                ajouterEpsilon(entree, fils.entree());
+                ajouterEpsilon(entree, sortie);
+                ajouterEpsilon(fils.sortie(), fils.entree());
+                ajouterEpsilon(fils.sortie(), sortie);
+                yield new Fragment(entree, sortie);
+            }
+        };
     }
 
-    /** Construit un AFN avec transitions epsilon par la methode d'Aho-Ullman. */
-    public static void automateDepuisArbre(Noeud racine, Automate automate) {
-        if (automate == null) {
-            return;
-        }
-
-        automate.nbEtats = 0;
-        automate.etatInitial = 0;
-        java.util.Arrays.fill(automate.etatsFinaux, false);
-        for (boolean[][] matrice : automate.transitions) {
-            for (boolean[] ligne : matrice) {
-                java.util.Arrays.fill(ligne, false);
-            }
-        }
-        for (boolean[] ligne : automate.epsilon) {
-            java.util.Arrays.fill(ligne, false);
-        }
-
-        if (racine == null) {
-            return;
-        }
-
-        Fragment resultat = construireFragment(racine, automate);
-        if (resultat.entree < 0) {
-            automate.nbEtats = 0;
-            return;
-        }
-
-        automate.etatInitial = resultat.entree;
-        automate.etatsFinaux[resultat.sortie] = true;
+    private int nouvelEtat() {
+        transitions.add(new ArrayList<>());
+        epsilons.add(new ArrayList<>());
+        return transitions.size() - 1;
     }
 
-    private static void afficherAutomate(Automate automate) {
-        System.out.println("Nombre d'etats : " + automate.nbEtats);
-        System.out.println("Etat initial : q" + automate.etatInitial);
+    private void ajouterTransition(int source, char symbole, int destination) {
+        transitions.get(source).add(new Transition(symbole, destination));
+    }
 
-        System.out.print("Etats finaux :");
-        for (int etat = 0; etat < automate.nbEtats; etat++) {
-            if (automate.etatsFinaux[etat]) {
-                System.out.print(" q" + etat);
-            }
-        }
-        System.out.println("\n\nTransitions :");
+    private void ajouterEpsilon(int source, int destination) {
+        epsilons.get(source).add(destination);
+    }
 
-        for (int source = 0; source < automate.nbEtats; source++) {
-            for (int symbole = 0; symbole < MAX_SYMBOLES; symbole++) {
-                for (int destination = 0;
-                     destination < automate.nbEtats; destination++) {
-                    if (automate.transitions[source][symbole][destination]) {
-                        System.out.printf("q%d --%c--> q%d%n",
-                                source, (char) symbole, destination);
-                    }
-                }
-            }
-            for (int destination = 0;
-                 destination < automate.nbEtats; destination++) {
-                if (automate.epsilon[source][destination]) {
-                    System.out.printf("q%d --epsilon--> q%d%n",
-                            source, destination);
+    public int nbEtats() {
+        return transitions.size();
+    }
+
+    public int etatInitial() {
+        return etatInitial;
+    }
+
+    public int etatFinal() {
+        return etatFinal;
+    }
+
+    /** @return les transitions étiquetées sortant de l'état (non modifiable) */
+    public List<Transition> transitions(int etat) {
+        return Collections.unmodifiableList(transitions.get(etat));
+    }
+
+    /** @return les destinations des epsilon-transitions de l'état (non modifiable) */
+    public List<Integer> epsilons(int etat) {
+        return Collections.unmodifiableList(epsilons.get(etat));
+    }
+
+    /**
+     * Epsilon-fermeture d'un ensemble d'états : tous les états atteignables
+     * par des epsilon-transitions uniquement. Sert à la méthode des
+     * sous-ensembles (déterminisation).
+     * @param etats ensemble de départ
+     * @return l'ensemble fermé, trié
+     */
+    public Set<Integer> fermetureEpsilon(Set<Integer> etats) {
+        Set<Integer> fermeture = new TreeSet<>(etats);
+        Deque<Integer> aTraiter = new ArrayDeque<>(etats);
+        while (!aTraiter.isEmpty()) {
+            for (int suivant : epsilons.get(aTraiter.pop())) {
+                if (fermeture.add(suivant)) {
+                    aTraiter.push(suivant);
                 }
             }
         }
+        return fermeture;
+    }
+
+    /**
+     * États atteints depuis un ensemble d'états en lisant un caractère,
+     * sans epsilon-fermeture.
+     */
+    public Set<Integer> transiter(Set<Integer> etats, char symbole) {
+        Set<Integer> resultat = new TreeSet<>();
+        for (int etat : etats) {
+            for (Transition t : transitions.get(etat)) {
+                if (t.symbole() == symbole) {
+                    resultat.add(t.destination());
+                }
+            }
+        }
+        return resultat;
+    }
+
+    /**
+     * Simule l'epsilon-AFN sur un mot entier.
+     * @return vrai si le mot complet appartient au langage de l'automate
+     */
+    public boolean accepte(String mot) {
+        Set<Integer> courants = fermetureEpsilon(Set.of(etatInitial));
+        for (char c : mot.toCharArray()) {
+            courants = fermetureEpsilon(transiter(courants, c));
+            if (courants.isEmpty()) {
+                return false;
+            }
+        }
+        return courants.contains(etatFinal);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Nombre d'etats : ").append(nbEtats()).append('\n');
+        sb.append("Etat initial : q").append(etatInitial).append('\n');
+        sb.append("Etat final : q").append(etatFinal).append("\n\n");
+        sb.append("Transitions :\n");
+        for (int q = 0; q < nbEtats(); q++) {
+            for (Transition t : transitions.get(q)) {
+                sb.append("q").append(q).append(' ').append(t).append('\n');
+            }
+            for (int destination : epsilons.get(q)) {
+                sb.append("q").append(q).append(" --epsilon--> q")
+                        .append(destination).append('\n');
+            }
+        }
+        return sb.toString();
     }
 
     public static void main(String[] args) {
         // Expression choisie : a(b|c)*
-        Noeud feuilleA = new Noeud(TypeNoeud.CARACTERE, 'a', null, null);
-        Noeud feuilleB = new Noeud(TypeNoeud.CARACTERE, 'b', null, null);
-        Noeud feuilleC = new Noeud(TypeNoeud.CARACTERE, 'c', null, null);
+        RegexTree expression = new RegexTree.Concat(
+                new RegexTree.Feuille('a'),
+                new RegexTree.Etoile(new RegexTree.Union(
+                        new RegexTree.Feuille('b'),
+                        new RegexTree.Feuille('c'))));
 
-        Noeud unionBC = new Noeud(TypeNoeud.UNION, '\0', feuilleB, feuilleC);
-        Noeud etoileBC = new Noeud(TypeNoeud.ETOILE, '\0', unionBC, null);
-        Noeud expression = new Noeud(TypeNoeud.CONCAT, '\0', feuilleA, etoileBC);
-
-        Automate automate = new Automate();
-        automateDepuisArbre(expression, automate);
-        afficherAutomate(automate);
+        AutomateAhoUllman automate = depuisArbre(expression);
+        System.out.println("Arbre : " + expression + "\n");
+        System.out.println(automate);
+        for (String mot : List.of("a", "abcb", "ab", "b", "abd", "")) {
+            System.out.println("\"" + mot + "\" accepte : " + automate.accepte(mot));
+        }
     }
 }
