@@ -18,11 +18,19 @@ import java.util.TreeSet;
  */
 public final class AutomateAhoUllman {
 
-    /** Transition étiquetée par un caractère vers l'état destination. */
+    /** Étiquette spéciale d'une transition acceptant n'importe quel caractère ('.'). */
+    public static final char JOKER = '￿';
+
+    /** Transition étiquetée par un caractère (ou {@link #JOKER}) vers l'état destination. */
     public record Transition(char symbole, int destination) {
+        /** @return vrai si cette transition peut être empruntée en lisant c */
+        public boolean accepte(char c) {
+            return symbole == JOKER || symbole == c;
+        }
+
         @Override
         public String toString() {
-            return "--" + symbole + "--> q" + destination;
+            return "--" + (symbole == JOKER ? "." : String.valueOf(symbole)) + "--> q" + destination;
         }
     }
 
@@ -63,6 +71,13 @@ public final class AutomateAhoUllman {
                 int entree = nouvelEtat();
                 int sortie = nouvelEtat();
                 ajouterTransition(entree, f.c(), sortie);
+                yield new Fragment(entree, sortie);
+            }
+            // entree --JOKER--> sortie
+            case RegexTree.Point p -> {
+                int entree = nouvelEtat();
+                int sortie = nouvelEtat();
+                ajouterTransition(entree, JOKER, sortie);
                 yield new Fragment(entree, sortie);
             }
             // gauche.sortie --eps--> droit.entree, sans nouvel état
@@ -135,6 +150,19 @@ public final class AutomateAhoUllman {
         return Collections.unmodifiableList(epsilons.get(etat));
     }
 
+    /** @return les caractères explicites apparaissant sur les transitions (sans {@link #JOKER}), triés */
+    public Set<Character> alphabet() {
+        Set<Character> alphabet = new TreeSet<>();
+        for (List<Transition> depuisEtat : transitions) {
+            for (Transition t : depuisEtat) {
+                if (t.symbole() != JOKER) {
+                    alphabet.add(t.symbole());
+                }
+            }
+        }
+        return alphabet;
+    }
+
     /**
      * Epsilon-fermeture d'un ensemble d'états : tous les états atteignables
      * par des epsilon-transitions uniquement. Sert à la méthode des
@@ -163,7 +191,7 @@ public final class AutomateAhoUllman {
         Set<Integer> resultat = new TreeSet<>();
         for (int etat : etats) {
             for (Transition t : transitions.get(etat)) {
-                if (t.symbole() == symbole) {
+                if (t.accepte(symbole)) {
                     resultat.add(t.destination());
                 }
             }

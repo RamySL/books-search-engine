@@ -1,7 +1,7 @@
 package egrep;
 
 /**
- * Arbre syntaxique d'une regex simple, non étendue : '|', '.' et '*'.</br>
+ * Arbre syntaxique d'une regex : lettre, point, concaténation, '|' et '*'.</br>
  * L'arité de chaque opérateur est portée par le type.
  */
 public sealed interface RegexTree {
@@ -10,6 +10,14 @@ public sealed interface RegexTree {
         @Override
         public String toString() {
             return String.valueOf(c);
+        }
+    }
+
+    /** Caractère universel '.' : accepte n'importe quel caractère. */
+    record Point() implements RegexTree {
+        @Override
+        public String toString() {
+            return ".";
         }
     }
 
