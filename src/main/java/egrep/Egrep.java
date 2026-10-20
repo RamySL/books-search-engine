@@ -1,13 +1,11 @@
 package egrep;
 
-import java.io.BufferedReader;
 import java.io.FileDescriptor;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,30 +59,30 @@ public class Egrep {
         if (!brut) {
             affichage.entete(motif, fichier, recherche);
         }
-        int numero = 0;
-        int lignesTrouvees = 0;
-        int nbOccurrences = 0;
-        // le décodage UTF-8 remplace les octets invalides au lieu de lever une exception
-        try (BufferedReader lecteur = new BufferedReader(
-                new InputStreamReader(new FileInputStream(fichier), StandardCharsets.UTF_8))) {
-            String ligne;
-            while ((ligne = lecteur.readLine()) != null) {
-                numero++;
-                if (!recherche.contient(ligne)) {
-                    continue;
-                }
-                lignesTrouvees++;
-                if (brut) {
-                    sortie.println(ligne);
-                } else {
-                    List<int[]> occurrences = recherche.occurrences(ligne);
-                    nbOccurrences += occurrences.size();
-                    affichage.ligne(numero, ligne, occurrences);
-                }
-            }
+        List<String> lignes;
+        try {
+            lignes = Lignes.lire(Path.of(fichier));
         } catch (IOException e) {
             System.err.println("egrep : impossible de lire " + fichier + " (" + e.getMessage() + ")");
             System.exit(2);
+            return;
+        }
+        int numero = 0;
+        int lignesTrouvees = 0;
+        int nbOccurrences = 0;
+        for (String ligne : lignes) {
+            numero++;
+            if (!recherche.contient(ligne)) {
+                continue;
+            }
+            lignesTrouvees++;
+            if (brut) {
+                sortie.println(ligne);
+            } else {
+                List<int[]> occurrences = recherche.occurrences(ligne);
+                nbOccurrences += occurrences.size();
+                affichage.ligne(numero, ligne, occurrences);
+            }
         }
         if (!brut) {
             long millis = (System.nanoTime() - debut) / 1_000_000;
