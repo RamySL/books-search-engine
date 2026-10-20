@@ -1,4 +1,4 @@
-package egrep;
+package egrep.kmp;
 
 /**
  * Recherche d'un facteur (suite de lettres, sans opérateur) dans un texte par

@@ -1,13 +1,62 @@
 package egrep;
 
+import egrep.automate.Determinisation;
+import egrep.automate.Dfa;
+import egrep.automate.Minimisation;
+import egrep.automate.Ndfa;
+import egrep.kmp.Kmp;
+import egrep.regex.RegexParser;
+import egrep.regex.RegexTree;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Stratégie de recherche d'un motif dans une ligne : test rapide de présence,
- * et repérage des occurrences pour l'affichage en couleur.
+ * et repérage des occurrences pour l'affichage en couleur. Les deux stratégies
+ * du sujet sont {@link ParKmp} et {@link ParAutomate}, et {@link #pour} choisit
+ * entre elles.
  */
 public sealed interface Recherche {
+
+    /**
+     * Choisit la stratégie : KMP si la regex n'est qu'une suite de
+     * concaténations de lettres (et {@code kmpAutorise}), sinon l'automate
+     * déterministe minimal construit par les étapes 1 à 4 du sujet.
+     * @throws IllegalArgumentException si la regex est mal formée
+     */
+    static Recherche pour(String regex, boolean kmpAutorise) {
+        RegexTree arbre = RegexParser.analyser(regex);              // étape 1
+        Optional<String> mot = suiteDeLettres(arbre);
+        if (kmpAutorise && mot.isPresent()) {
+            return new ParKmp(new Kmp(mot.get()));
+        }
+        // .*regex filtre les lignes en un seul parcours ; la regex seule délimite les occurrences
+        RegexTree facteur = new RegexTree.Concat(new RegexTree.Etoile(new RegexTree.Point()), arbre);
+        return new ParAutomate(compiler(facteur), compiler(arbre));
+    }
+
+    /** Étapes 2 à 4 : arbre → epsilon-AFN → DFA → DFA minimal. */
+    private static Dfa compiler(RegexTree arbre) {
+        Ndfa ndfa = Ndfa.ahoUllman(arbre);                          // étape 2
+        Dfa dfa = Determinisation.sousEnsembles(ndfa);              // étape 3
+        return Minimisation.moore(dfa);                             // étape 4
+    }
+
+    /**
+     * @return le mot lu sur les feuilles si l'arbre n'est qu'une suite de
+     *         concaténations de lettres (les parenthèses ne laissent pas de trace
+     *         dans l'arbre), vide sinon
+     */
+    private static Optional<String> suiteDeLettres(RegexTree arbre) {
+        return switch (arbre) {
+            case RegexTree.Feuille f -> Optional.of(String.valueOf(f.c()));
+            case RegexTree.Concat c -> suiteDeLettres(c.gauche())
+                    .flatMap(gauche -> suiteDeLettres(c.droit()).map(droit -> gauche + droit));
+            default -> Optional.empty();
+        };
+    }
 
     /** @return vrai si la ligne contient une occurrence du motif */
     boolean contient(String ligne);
@@ -66,8 +115,8 @@ public sealed interface Recherche {
 
     /**
      * Motif quelconque : le DFA minimal de {@code .*regex} filtre les lignes en un
-     * seul parcours ; celui de la regex seule, essayé à chaque position, délimite
-     * les occurrences (uniquement sur les lignes retenues).
+     * seul parcours (étape 5) ; celui de la regex seule, essayé à chaque position,
+     * délimite les occurrences (uniquement sur les lignes retenues).
      */
     record ParAutomate(Dfa facteur, Dfa motif) implements Recherche {
         @Override

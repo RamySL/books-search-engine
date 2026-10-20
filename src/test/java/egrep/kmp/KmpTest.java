@@ -1,8 +1,8 @@
-package egrep;
+package egrep.kmp;
 
+import egrep.Mots;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -38,29 +38,13 @@ class KmpTest {
     }
 
     @Test
-    void agreesWithContainsAndWithTheDfa() {
-        List<String> mots = new ArrayList<>();
-        mots.add("");
-        for (int debut = 0; debut < mots.size() && mots.get(debut).length() < 8; debut++) {
-            mots.add(mots.get(debut) + 'a');
-            mots.add(mots.get(debut) + 'b');
-        }
+    void agreesWithStringContains() {
+        List<String> mots = Mots.tousLesMots("ab", 8);
         for (String facteur : List.of("a", "ab", "aab", "abab", "aabaa", "abaab", "bbb", "aaaa")) {
             Kmp kmp = new Kmp(facteur);
-            Dfa dfa = Egrep.compiler(facteur);
             for (String mot : mots) {
                 assertEquals(mot.contains(facteur), kmp.contient(mot), facteur + " dans \"" + mot + "\"");
-                assertEquals(kmp.contient(mot), Egrep.correspond(dfa, mot), facteur + " dans \"" + mot + "\"");
             }
         }
-    }
-
-    @Test
-    void simplePatternDetection() {
-        assertTrue(Egrep.estFacteurSimple("Sargon"));
-        assertFalse(Egrep.estFacteurSimple("S(a|g|r)+on"));
-        assertFalse(Egrep.estFacteurSimple("S.rgon"));
-        assertFalse(Egrep.estFacteurSimple("ab*"));
-        assertFalse(Egrep.estFacteurSimple(""));
     }
 }

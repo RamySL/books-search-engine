@@ -1,4 +1,6 @@
-package egrep;
+package egrep.automate;
+
+import egrep.regex.RegexTree;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -7,30 +9,51 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 
 /**
- * Automate fini non-déterministe avec epsilon-transitions (epsilon-AFN),
- * construit à partir d'un {@link RegexTree} selon la méthode d'Aho-Ullman.</br>
+ * Étape 2 du sujet : automate fini non-déterministe avec epsilon-transitions
+ * (epsilon-AFN), construit à partir d'un {@link RegexTree} selon la méthode
+ * d'Aho-Ullman.</br>
  * Les états sont numérotés de 0 à {@code nbEtats() - 1}. Par construction,
  * l'automate a un unique état initial et un unique état final, et chaque état
- * a au plus une transition étiquetée par un caractère ou au plus deux
- * epsilon-transitions sortantes.
+ * a au plus une transition étiquetée ou au plus deux epsilon-transitions
+ * sortantes.
  */
-public final class AutomateAhoUllman {
+public final class Ndfa {
 
-    /** Étiquette spéciale d'une transition acceptant n'importe quel caractère ('.'). */
-    public static final char JOKER = '￿';
+    /** Étiquette d'une transition : un caractère précis, ou n'importe lequel ('.'). */
+    public sealed interface Etiquette {
 
-    /** Transition étiquetée par un caractère (ou {@link #JOKER}) vers l'état destination. */
-    public record Transition(char symbole, int destination) {
+        record Lettre(char c) implements Etiquette {
+            @Override
+            public String toString() {
+                return String.valueOf(c);
+            }
+        }
+
+        /** Caractère universel '.' : la transition accepte n'importe quel caractère. */
+        record Joker() implements Etiquette {
+            @Override
+            public String toString() {
+                return ".";
+            }
+        }
+    }
+
+    /** Transition étiquetée vers l'état destination. */
+    public record Transition(Etiquette etiquette, int destination) {
         /** @return vrai si cette transition peut être empruntée en lisant c */
         public boolean accepte(char c) {
-            return symbole == JOKER || symbole == c;
+            return switch (etiquette) {
+                case Etiquette.Lettre l -> l.c() == c;
+                case Etiquette.Joker j -> true;
+            };
         }
 
         @Override
         public String toString() {
-            return "--" + (symbole == JOKER ? "." : String.valueOf(symbole)) + "--> q" + destination;
+            return "--" + etiquette + "--> q" + destination;
         }
     }
 
@@ -44,7 +67,7 @@ public final class AutomateAhoUllman {
     private int etatInitial;
     private int etatFinal;
 
-    private AutomateAhoUllman() {
+    private Ndfa() {
     }
 
     /**
@@ -52,8 +75,8 @@ public final class AutomateAhoUllman {
      * @param arbre arbre syntaxique de la regex, non null
      * @return l'automate d'Aho-Ullman correspondant
      */
-    public static AutomateAhoUllman depuisArbre(RegexTree arbre) {
-        AutomateAhoUllman automate = new AutomateAhoUllman();
+    public static Ndfa ahoUllman(RegexTree arbre) {
+        Ndfa automate = new Ndfa();
         Fragment resultat = automate.construire(arbre);
         automate.etatInitial = resultat.entree();
         automate.etatFinal = resultat.sortie();
@@ -70,14 +93,14 @@ public final class AutomateAhoUllman {
             case RegexTree.Feuille f -> {
                 int entree = nouvelEtat();
                 int sortie = nouvelEtat();
-                ajouterTransition(entree, f.c(), sortie);
+                ajouterTransition(entree, new Etiquette.Lettre(f.c()), sortie);
                 yield new Fragment(entree, sortie);
             }
-            // entree --JOKER--> sortie
+            // entree --.--> sortie
             case RegexTree.Point p -> {
                 int entree = nouvelEtat();
                 int sortie = nouvelEtat();
-                ajouterTransition(entree, JOKER, sortie);
+                ajouterTransition(entree, new Etiquette.Joker(), sortie);
                 yield new Fragment(entree, sortie);
             }
             // gauche.sortie --eps--> droit.entree, sans nouvel état
@@ -120,8 +143,8 @@ public final class AutomateAhoUllman {
         return transitions.size() - 1;
     }
 
-    private void ajouterTransition(int source, char symbole, int destination) {
-        transitions.get(source).add(new Transition(symbole, destination));
+    private void ajouterTransition(int source, Etiquette etiquette, int destination) {
+        transitions.get(source).add(new Transition(etiquette, destination));
     }
 
     private void ajouterEpsilon(int source, int destination) {
@@ -150,13 +173,13 @@ public final class AutomateAhoUllman {
         return Collections.unmodifiableList(epsilons.get(etat));
     }
 
-    /** @return les caractères explicites apparaissant sur les transitions (sans {@link #JOKER}), triés */
+    /** @return les caractères explicites apparaissant sur les transitions (sans les jokers), triés */
     public Set<Character> alphabet() {
         Set<Character> alphabet = new TreeSet<>();
         for (List<Transition> depuisEtat : transitions) {
             for (Transition t : depuisEtat) {
-                if (t.symbole() != JOKER) {
-                    alphabet.add(t.symbole());
+                if (t.etiquette() instanceof Etiquette.Lettre l) {
+                    alphabet.add(l.c());
                 }
             }
         }
@@ -188,10 +211,22 @@ public final class AutomateAhoUllman {
      * sans epsilon-fermeture.
      */
     public Set<Integer> transiter(Set<Integer> etats, char symbole) {
+        return destinations(etats, t -> t.accepte(symbole));
+    }
+
+    /**
+     * États atteints en lisant un caractère absent de {@link #alphabet()} :
+     * seules les transitions joker s'appliquent. Sans epsilon-fermeture.
+     */
+    public Set<Integer> transiterHorsAlphabet(Set<Integer> etats) {
+        return destinations(etats, t -> t.etiquette() instanceof Etiquette.Joker);
+    }
+
+    private Set<Integer> destinations(Set<Integer> etats, Predicate<Transition> empruntable) {
         Set<Integer> resultat = new TreeSet<>();
         for (int etat : etats) {
             for (Transition t : transitions.get(etat)) {
-                if (t.accepte(symbole)) {
+                if (empruntable.test(t)) {
                     resultat.add(t.destination());
                 }
             }
@@ -231,21 +266,5 @@ public final class AutomateAhoUllman {
             }
         }
         return sb.toString();
-    }
-
-    public static void main(String[] args) {
-        // Expression choisie : a(b|c)*
-        RegexTree expression = new RegexTree.Concat(
-                new RegexTree.Feuille('a'),
-                new RegexTree.Etoile(new RegexTree.Union(
-                        new RegexTree.Feuille('b'),
-                        new RegexTree.Feuille('c'))));
-
-        AutomateAhoUllman automate = depuisArbre(expression);
-        System.out.println("Arbre : " + expression + "\n");
-        System.out.println(automate);
-        for (String mot : List.of("a", "abcb", "ab", "b", "abd", "")) {
-            System.out.println("\"" + mot + "\" accepte : " + automate.accepte(mot));
-        }
     }
 }

@@ -1,7 +1,8 @@
-package egrep;
+package egrep.regex;
 
 /**
- * Arbre syntaxique d'une regex : lettre, point, concaténation, '|' et '*'.</br>
+ * Arbre syntaxique d'une regex, produit par {@link RegexParser} (étape 1) :
+ * lettre, point, concaténation, '|' et '*'.</br>
  * L'arité de chaque opérateur est portée par le type.
  */
 public sealed interface RegexTree {
