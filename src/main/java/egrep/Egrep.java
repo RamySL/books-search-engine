@@ -9,8 +9,9 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
-import java.util.function.Predicate;
+import java.util.List;
 
 public class Egrep {
 
@@ -183,49 +184,113 @@ public class Egrep {
     /**
      * Choisit la stratégie de recherche : KMP si le motif est un facteur simple
      * (et {@code kmpAutorise}), sinon l'automate déterministe minimal.
-     * @return un prédicat vrai sur les lignes contenant le motif
      */
-    static Predicate<String> chercheur(String regex, boolean kmpAutorise) {
+    static Recherche chercheur(String regex, boolean kmpAutorise) {
         if (kmpAutorise && estFacteurSimple(regex)) {
-            return new Kmp(regex)::contient;
+            return new Recherche.ParKmp(new Kmp(regex));
         }
-        Dfa dfa = compiler(regex);
-        return ligne -> correspond(dfa, ligne);
+        Dfa motif = Dfa.depuisAutomate(AutomateAhoUllman.depuisArbre(regexToAst(regex))).minimiser();
+        return new Recherche.ParAutomate(compiler(regex), motif);
+    }
+
+    // codes ANSI, mêmes couleurs que grep --color
+    private static final String ROUGE = "\u001B[1;31m";
+    private static final String VERT = "\u001B[32m";
+    private static final String CYAN = "\u001B[36m";
+    private static final String GRAS = "\u001B[1m";
+    private static final String FIN_COULEUR = "\u001B[0m";
+
+    /** @return la ligne où chaque occurrence est encadrée par les codes ANSI du rouge */
+    static String surligner(String ligne, List<int[]> occurrences) {
+        StringBuilder sb = new StringBuilder();
+        int position = 0;
+        for (int[] occurrence : occurrences) {
+            sb.append(ligne, position, occurrence[0])
+                    .append(ROUGE).append(ligne, occurrence[0], occurrence[1]).append(FIN_COULEUR);
+            position = occurrence[1];
+        }
+        return sb.append(ligne, position, ligne.length()).toString();
+    }
+
+    private static void usage() {
+        System.err.println("Usage : egrep [--dfa] [--brut] MOTIF FICHIER");
+        System.err.println("  --dfa   force l'automate meme si le motif est une simple suite de lettres");
+        System.err.println("  --brut  sortie identique a egrep : lignes seules, sans couleur ni numero");
+        System.exit(2);
     }
 
     /**
-     * Usage : egrep [--dfa] MOTIF FICHIER — affiche les lignes de FICHIER contenant
-     * une occurrence de MOTIF. {@code --dfa} interdit KMP (pour comparer les deux méthodes).
+     * Usage : egrep [--dfa] [--brut] MOTIF FICHIER — affiche les lignes de FICHIER
+     * contenant une occurrence de MOTIF, numérotées et avec les occurrences en
+     * rouge, suivies d'un récapitulatif. {@code --dfa} interdit KMP (pour comparer
+     * les deux méthodes) ; {@code --brut} donne la sortie exacte d'egrep.
      */
     public static void main(String[] args) throws IOException {
-        boolean optionDfa = args.length == 3 && args[0].equals("--dfa");
-        boolean kmpAutorise = !optionDfa;
-        if (args.length != 2 && !optionDfa) {
-            System.err.println("Usage : egrep [--dfa] MOTIF FICHIER");
-            System.exit(2);
+        boolean kmpAutorise = true;
+        boolean brut = false;
+        List<String> positionnels = new ArrayList<>();
+        for (String arg : args) {
+            switch (arg) {
+                case "--dfa" -> kmpAutorise = false;
+                case "--brut" -> brut = true;
+                default -> positionnels.add(arg);
+            }
         }
-        String motif = args[args.length - 2];
-        String fichier = args[args.length - 1];
-        Predicate<String> chercheur;
+        if (positionnels.size() != 2) {
+            usage();
+        }
+        String motif = positionnels.get(0);
+        String fichier = positionnels.get(1);
+        long debut = System.nanoTime();
+        Recherche recherche;
         try {
-            chercheur = chercheur(motif, kmpAutorise);
+            recherche = chercheur(motif, kmpAutorise);
         } catch (IllegalArgumentException e) {
             System.err.println("egrep : " + e.getMessage());
             System.exit(2);
             return;
         }
         PrintStream sortie = new PrintStream(new FileOutputStream(FileDescriptor.out), false, StandardCharsets.UTF_8);
+        if (!brut) {
+            sortie.println(GRAS + "Motif \"" + motif + "\" dans " + fichier + FIN_COULEUR
+                    + "  (strategie : " + recherche.description() + ")");
+            sortie.println(CYAN + "-".repeat(72) + FIN_COULEUR);
+        }
+        int numero = 0;
+        int lignesTrouvees = 0;
+        int nbOccurrences = 0;
         // le décodage UTF-8 remplace les octets invalides au lieu de lever une exception
         try (BufferedReader lecteur = new BufferedReader(
                 new InputStreamReader(new FileInputStream(fichier), StandardCharsets.UTF_8))) {
             String ligne;
             while ((ligne = lecteur.readLine()) != null) {
-                if (chercheur.test(ligne)) {
+                numero++;
+                if (!recherche.contient(ligne)) {
+                    continue;
+                }
+                lignesTrouvees++;
+                if (brut) {
                     sortie.println(ligne);
+                } else {
+                    List<int[]> occurrences = recherche.occurrences(ligne);
+                    nbOccurrences += occurrences.size();
+                    sortie.printf("%s%6d%s %s|%s %s%n", VERT, numero, FIN_COULEUR,
+                            CYAN, FIN_COULEUR, surligner(ligne, occurrences));
                 }
             }
+        } catch (IOException e) {
+            System.err.println("egrep : impossible de lire " + fichier + " (" + e.getMessage() + ")");
+            System.exit(2);
+        }
+        if (!brut) {
+            long millis = (System.nanoTime() - debut) / 1_000_000;
+            sortie.println(CYAN + "-".repeat(72) + FIN_COULEUR);
+            sortie.println(GRAS + lignesTrouvees + " ligne(s) trouvee(s)" + FIN_COULEUR
+                    + " sur " + numero + ", " + nbOccurrences + " occurrence(s), en " + millis + " ms");
         }
         sortie.flush();
+        // comme egrep : 0 si au moins une ligne trouvée, 1 sinon
+        System.exit(lignesTrouvees > 0 ? 0 : 1);
     }
 
 }

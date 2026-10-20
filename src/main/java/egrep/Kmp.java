@@ -44,21 +44,34 @@ public final class Kmp {
 
     /** @return vrai si le facteur apparaît dans le texte */
     public boolean contient(String texte) {
+        return indice(texte, 0) != -1;
+    }
+
+    /** @return la longueur du facteur recherché */
+    public int longueur() {
+        return facteur.length;
+    }
+
+    /**
+     * @return l'indice de la première occurrence du facteur dans le texte à
+     *         partir de la position debut, ou -1 s'il n'y en a pas
+     */
+    public int indice(String texte, int debut) {
         int m = facteur.length;
         if (m == 0) {
-            return true;
+            return debut;
         }
         int j = 0; // nombre de caractères du facteur déjà alignés
-        for (int i = 0; i < texte.length(); i++) {
+        for (int i = debut; i < texte.length(); i++) {
             char c = texte.charAt(i);
             while (j >= 0 && facteur[j] != c) {
                 j = report[j];
             }
             j++;
             if (j == m) {
-                return true;
+                return i - m + 1;
             }
         }
-        return false;
+        return -1;
     }
 }

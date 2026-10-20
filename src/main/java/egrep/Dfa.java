@@ -241,6 +241,27 @@ public final class Dfa {
         return false;
     }
 
+    /**
+     * @return la fin (exclue) du plus long préfixe de mot[debut..] reconnu par
+     *         l'automate, ou -1 si aucun préfixe (même vide) n'est reconnu. Avec
+     *         le DFA de la regex seule, cela donne l'occurrence la plus longue
+     *         commençant en debut.
+     */
+    public int plusLongPrefixe(String mot, int debut) {
+        int etat = ETAT_INITIAL;
+        int fin = estFinal(etat) ? debut : -1;
+        for (int i = debut; i < mot.length(); i++) {
+            etat = suivant(etat, mot.charAt(i));
+            if (etat == AUCUN) {
+                break;
+            }
+            if (estFinal(etat)) {
+                fin = i + 1;
+            }
+        }
+        return fin;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
