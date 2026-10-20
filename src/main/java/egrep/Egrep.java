@@ -17,26 +17,27 @@ import java.util.List;
 public class Egrep {
 
     private static void usage() {
-        System.err.println("Usage : egrep [--dfa] [--brut] MOTIF FICHIER");
-        System.err.println("  --dfa   force l'automate meme si le motif est une simple suite de lettres");
-        System.err.println("  --brut  sortie identique a egrep : lignes seules, sans couleur ni numero");
+        System.err.println("Usage : egrep [--detail] [--dfa] MOTIF FICHIER");
+        System.err.println("  --detail  en-tete, lignes numerotees avec les occurrences en rouge, bilan");
+        System.err.println("  --dfa     force l'automate meme si le motif est une simple suite de lettres");
         System.exit(2);
     }
 
     /**
-     * Usage : egrep [--dfa] [--brut] MOTIF FICHIER — affiche les lignes de FICHIER
-     * contenant une occurrence de MOTIF, numérotées et avec les occurrences en
-     * rouge, suivies d'un récapitulatif. {@code --dfa} interdit KMP (pour comparer
-     * les deux méthodes) ; {@code --brut} donne la sortie exacte d'egrep.
+     * Usage : egrep [--detail] [--dfa] MOTIF FICHIER — affiche, comme egrep, les
+     * lignes de FICHIER qui contiennent une occurrence de MOTIF.
+     * {@code --detail} ajoute un en-tête, numérote les lignes, met les
+     * occurrences en rouge et finit par un récapitulatif ; {@code --dfa}
+     * interdit KMP, pour comparer les deux méthodes.
      */
     public static void main(String[] args) throws IOException {
         boolean kmpAutorise = true;
-        boolean brut = false;
+        boolean detail = false;
         List<String> positionnels = new ArrayList<>();
         for (String arg : args) {
             switch (arg) {
                 case "--dfa" -> kmpAutorise = false;
-                case "--brut" -> brut = true;
+                case "--detail" -> detail = true;
                 default -> positionnels.add(arg);
             }
         }
@@ -56,7 +57,7 @@ public class Egrep {
         }
         PrintStream sortie = new PrintStream(new FileOutputStream(FileDescriptor.out), false, StandardCharsets.UTF_8);
         Affichage affichage = new Affichage(sortie);
-        if (!brut) {
+        if (detail) {
             affichage.entete(motif, fichier, recherche);
         }
         List<String> lignes;
@@ -76,15 +77,15 @@ public class Egrep {
                 continue;
             }
             lignesTrouvees++;
-            if (brut) {
-                sortie.println(ligne);
-            } else {
+            if (detail) {
                 List<int[]> occurrences = recherche.occurrences(ligne);
                 nbOccurrences += occurrences.size();
                 affichage.ligne(numero, ligne, occurrences);
+            } else {
+                sortie.println(ligne);
             }
         }
-        if (!brut) {
+        if (detail) {
             long millis = (System.nanoTime() - debut) / 1_000_000;
             affichage.bilan(lignesTrouvees, numero, nbOccurrences, millis);
         }

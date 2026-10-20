@@ -1,6 +1,6 @@
 # Clone d'egrep — UE DAAR, projet 1
 
-Ramy SAIL et Prénom NOM
+Ramy SAIL et Younes Bensallah
 
 ## Contenu de l'archive
 
@@ -24,7 +24,7 @@ Ramy SAIL et Prénom NOM
 ## Lancer le binaire
 
 ```sh
-java -jar egrep.jar [--brut] [--dfa] MOTIF FICHIER
+java -jar egrep.jar [--detail] [--dfa] MOTIF FICHIER
 ```
 
 Par exemple, pour la figure 1 du sujet :
@@ -35,11 +35,11 @@ java -jar egrep.jar 'S(a|g|r)+on' instances/56667-0.txt
 
 Le motif doit être entre apostrophes, sinon le shell interprète `|`, `*` et les parenthèses.
 
-Par défaut, l'affichage est enrichi : un en-tête avec la stratégie choisie, les lignes numérotées avec les occurrences en rouge, puis un bilan. Deux options le modifient :
+Comme egrep, le programme affiche seulement les lignes qui contiennent une occurrence du motif. Deux options :
 
 | Option | Effet |
 |---|---|
-| `--brut` | sortie identique à celle d'egrep : les lignes seules, sans couleur ni numéro |
+| `--detail` | affichage enrichi : un en-tête avec la stratégie choisie, les lignes numérotées avec les occurrences en rouge, puis un bilan |
 | `--dfa` | force l'automate même quand KMP s'applique, pour comparer les deux méthodes |
 
 Le code de retour est celui d'egrep : 0 si au moins une ligne est trouvée, 1 sinon, 2 en cas d'erreur (motif mal formé, fichier illisible).
@@ -47,7 +47,7 @@ Le code de retour est celui d'egrep : 0 si au moins une ligne est trouvée, 1 si
 Pour vérifier que le résultat est identique à celui d'egrep (`grep -E`), avec bash :
 
 ```sh
-diff <(java -jar egrep.jar --brut 'S(a|g|r)+on' instances/56667-0.txt) \
+diff <(java -jar egrep.jar 'S(a|g|r)+on' instances/56667-0.txt) \
      <(grep -E 'S(a|g|r)+on' instances/56667-0.txt) && echo identique
 ```
 

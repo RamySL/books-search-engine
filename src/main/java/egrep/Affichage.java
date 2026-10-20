@@ -4,7 +4,7 @@ import java.io.PrintStream;
 import java.util.List;
 
 /**
- * Sortie lisible (hors mode brut) : en-tête, lignes numérotées avec les
+ * Sortie lisible de l'option --detail : en-tête, lignes numérotées avec les
  * occurrences en rouge, bilan final.
  */
 final class Affichage {
