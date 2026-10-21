@@ -1,0 +1,7 @@
+processeur : 13th Gen Intel(R) Core(TM) i7-1360P
+coeurs : 16
+systeme : Linux 5.15.167.4-microsoft-standard-WSL2
+java : 21.0.12.1+1-1-24.04.4-Ubuntu
+egrep : grep (GNU grep) 3.11
+corpus : 121817 lignes, 6415078 octets
+mesures : 3 tours a vide, puis 10 mesures

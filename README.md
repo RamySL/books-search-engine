@@ -11,6 +11,7 @@ Ramy SAIL et Younes Bensallah
 | `src/main/java/` | les sources commentées |
 | `src/test/java/` | les tests JUnit |
 | `instances/` | les textes de test |
+| `mesures/` | les résultats du banc d'essai, en CSV |
 | `Makefile` | la compilation, sans Maven |
 | `pom.xml` | les tests JUnit, avec Maven |
 
@@ -80,7 +81,39 @@ Les tests sont dans `src/test/java/egrep`, dans les mêmes packages que les clas
 
 ## Instances de test
 
-`instances/56667-0.txt` est le texte du projet Gutenberg utilisé dans la figure 1 du sujet (https://www.gutenberg.org/files/56667/56667-0.txt), tel que Gutenberg le distribue.
+Le dossier `instances/` contient six livres du projet Gutenberg, de tailles et de styles différents :
+
+| Fichier | Livre | Auteur | Taille |
+|---|---|---|---|
+| `56667-0.txt` | *A History of Babylon*, le texte de la figure 1 du sujet | Leonard William King | 763 Ko |
+| `pg11.txt` | *Alice's Adventures in Wonderland* | Lewis Carroll | 174 Ko |
+| `pg1661.txt` | *The Adventures of Sherlock Holmes* | Arthur Conan Doyle | 608 Ko |
+| `pg2701.txt` | *Moby Dick; Or, The Whale* | Herman Melville | 1,3 Mo |
+| `pg2600.txt` | *War and Peace* | Léon Tolstoï | 3,4 Mo |
+| `pg4650.txt` | *Candide, ou l'optimisme*, en français | Voltaire | 234 Ko |
+
+Ce sont les textes tels que Gutenberg les distribue, en UTF-8 avec des fins de ligne CRLF. 
+
+## Mesures de performance
+
+Le banc d'essai du rapport compare KMP, l'automate et egrep sur les textes de `instances/`. Il se lance depuis la racine du projet, demande egrep et tourne en deux minutes environ :
+
+```sh
+make
+java -cp egrep.jar egrep.mesures.Mesures mesures/avant
+```
+
+Chaque mesure est répétée 10 fois, après 3 tours à vide, et donne la moyenne et l'écart type en millisecondes. Le dossier donné reçoit :
+
+| Fichier | Contenu |
+|---|---|
+| `machine.txt` | les conditions de mesure : processeur, système, versions de Java et d'egrep |
+| `demarrage.csv` | le coût fixe du clone et d'egrep, sur un fichier vide |
+| `taille.csv` | le temps selon la taille du texte, de 1 à 32 Mo, dans le programme et pour les commandes complètes |
+| `motifs.csv` | motif par motif, sur tout le corpus : construction, recherche, commandes complètes du clone et d'egrep |
+| `etats.csv` | le nombre d'états et le temps de construction pour `a(a\|b)…(a\|b)`, dont le DFA a 2^(k+1) états |
+
+`mesures/avant/` contient les résultats obtenus avec la table de transitions à base de `HashMap`.
 
 ## Limites connues
 

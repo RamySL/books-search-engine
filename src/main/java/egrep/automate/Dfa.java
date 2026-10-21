@@ -23,6 +23,7 @@ public final class Dfa {
 
     private final Set<Character> alphabet;
     // transitions.get(q).get(c) : destination depuis q en lisant le caractère explicite c
+    // TODO: optimisation avec un tableau natif, et réalisation de tests de performances pour comparer à l'ancienne version
     private final List<Map<Character, Integer>> transitions = new ArrayList<>();
     // autres.get(q) : destination depuis q en lisant tout caractère hors alphabet
     private final List<Integer> autres = new ArrayList<>();
