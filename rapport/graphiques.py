@@ -1,10 +1,12 @@
 """Graphiques du rapport, à partir des CSV du banc d'essai (egrep.mesures.Mesures).
 
 Usage, depuis la racine du projet :
-    python3 rapport/graphiques.py mesures/avant rapport/figures
+    python3 rapport/graphiques.py mesures rapport/figures
 
-Chaque figure est écrite en PDF (pour LaTeX) et en PNG. Les barres d'erreur
-représentent l'écart type sur les 10 mesures.
+Les figures taille, motifs et etats viennent de mesures/apres (la Dfa actuelle,
+en int[][]). La figure table compare mesures/avant (Dfa à HashMap) et
+mesures/apres. Chaque figure est écrite en PDF (pour LaTeX) et en PNG. Les
+barres d'erreur représentent l'écart type sur les 10 mesures.
 """
 
 import csv
@@ -22,6 +24,8 @@ from matplotlib.ticker import FuncFormatter
 KMP = "#2a78d6"
 AUTOMATE = "#eb6834"
 EGREP = "#1baf7a"
+# L'ancienne Dfa, à HashMap, dans la figure de comparaison.
+HASHMAP = "#a8a6a0"
 ENCRE = "#0b0b0b"
 ENCRE_2 = "#52514e"
 GRILLE = "#e4e3df"
@@ -100,12 +104,16 @@ def taille(mesures, figures):
     enregistrer(fig, figures, "taille")
 
 
+def afficher(motif):
+    return motif.replace("(a|e|i|o|u)(a|e|i|o|u)(a|e|i|o|u)", "(a|e|i|o|u)×3")
+
+
 def motifs(mesures, figures):
     """Temps par motif : recherche seule (KMP / automate), puis clone face à egrep."""
     lignes = lire(mesures / "motifs.csv")
     noms = list(dict.fromkeys(l["motif"] for l in lignes))
     par = {(l["motif"], l["strategie"]): l for l in lignes}
-    noms_affiches = [n.replace("(a|e|i|o|u)(a|e|i|o|u)(a|e|i|o|u)", "(a|e|i|o|u)×3") for n in noms]
+    noms_affiches = [afficher(n) for n in noms]
     y = range(len(noms))
     h = 0.38
 
@@ -138,7 +146,8 @@ def motifs(mesures, figures):
                    xytext=(4, 0), textcoords="offset points", va="center", fontsize=7.5, color=ENCRE_2)
     b.set_title("Commande complète : clone puis egrep")
     b.set_xlabel("temps (ms)")
-    b.set_xlim(right=520)
+    # place pour les facteurs à droite des barres
+    b.set_xlim(right=1.12 * max(float(l["clone_moy"]) + float(l["clone_ecart"]) for l in lignes))
 
     a.set_yticks(list(y), noms_affiches)
     a.invert_yaxis()
@@ -183,13 +192,62 @@ def etats(mesures, figures):
     enregistrer(fig, figures, "etats")
 
 
+def table(avant, apres, figures):
+    """Dfa à HashMap (avant) puis à int[][] (après) : recherche seule, selon la taille puis par motif."""
+    t_avant, t_apres = lire(avant / "taille.csv"), lire(apres / "taille.csv")
+    x = colonne(t_apres, "taille_mo")
+    fig, (a, b) = plt.subplots(1, 2, figsize=(7.2, 3.3))
+
+    # la couleur donne la méthode, le pointillé la série avant
+    courbe(a, x, t_avant, "automate", HASHMAP, "automate, HashMap", style="--", marqueur="s")
+    courbe(a, x, t_apres, "automate", AUTOMATE, "automate, int[][]")
+    courbe(a, x, t_avant, "kmp", KMP, "KMP, série HashMap", style="--", marqueur="s")
+    courbe(a, x, t_apres, "kmp", KMP, "KMP, série int[][]")
+    a.set_title("Babylon, selon la taille")
+    a.set_xticks([1, 4, 8, 16, 32])
+    a.set_xlim(0, 33)
+    a.set_xlabel("taille du texte (Mo)")
+    a.set_ylabel("temps (ms)")
+    a.set_ylim(bottom=0)
+    a.legend(loc="upper left")
+
+    # une barre HashMap et une barre int[][] par motif, avec le facteur gagné
+    m_avant = {l["motif"]: l for l in lire(avant / "motifs.csv") if l["strategie"] == "automate"}
+    m_apres = {l["motif"]: l for l in lire(apres / "motifs.csv") if l["strategie"] == "automate"}
+    noms = list(m_apres)
+    h = 0.38
+    erreur = {"ecolor": ENCRE_2, "elinewidth": 0.8}
+    for i, n in enumerate(noms):
+        lent, rapide = m_avant[n], m_apres[n]
+        b.barh(i - h / 2, float(lent["recherche_moy"]), height=h, xerr=float(lent["recherche_ecart"]),
+               color=HASHMAP, error_kw=erreur)
+        b.barh(i + h / 2, float(rapide["recherche_moy"]), height=h, xerr=float(rapide["recherche_ecart"]),
+               color=AUTOMATE, error_kw=erreur)
+        facteur = float(lent["recherche_moy"]) / float(rapide["recherche_moy"])
+        b.annotate(f"×{facteur:.1f}".replace(".", ","),
+                   (float(lent["recherche_moy"]) + float(lent["recherche_ecart"]), i - h / 2),
+                   xytext=(4, 0), textcoords="offset points", va="center", fontsize=7.5, color=ENCRE_2)
+    b.set_yticks(range(len(noms)), [afficher(n) for n in noms])
+    b.invert_yaxis()
+    b.grid(axis="y", visible=False)
+    b.tick_params(axis="y", length=0)
+    b.set_xlim(right=1.15 * max(float(l["recherche_moy"]) + float(l["recherche_ecart"]) for l in m_avant.values()))
+    b.set_title("Automate, par motif (6,4 Mo)")
+    b.set_xlabel("temps (ms)")
+    b.legend([Patch(color=HASHMAP), Patch(color=AUTOMATE)], ["HashMap", "int[][]"], loc="upper right")
+
+    fig.tight_layout(w_pad=2.5)
+    enregistrer(fig, figures, "table")
+
+
 def main():
-    mesures = Path(sys.argv[1] if len(sys.argv) > 1 else "mesures/avant")
+    mesures = Path(sys.argv[1] if len(sys.argv) > 1 else "mesures")
     figures = Path(sys.argv[2] if len(sys.argv) > 2 else "rapport/figures")
     figures.mkdir(parents=True, exist_ok=True)
-    taille(mesures, figures)
-    motifs(mesures, figures)
-    etats(mesures, figures)
+    taille(mesures / "apres", figures)
+    motifs(mesures / "apres", figures)
+    etats(mesures / "apres", figures)
+    table(mesures / "avant", mesures / "apres", figures)
 
 
 if __name__ == "__main__":

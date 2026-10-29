@@ -40,25 +40,24 @@ qui contiennent au moins un facteur appartenant au langage de $R$. Comme le
 propose le sujet, nous traitons chaque ligne indépendamment, et nous nous limitons
 au sous-ensemble suivant de la norme ERE : les lettres, le point (caractère
 universel), la concaténation, l'alternative \motif{|}, l'étoile \motif{*} et les
-parenthèses. Nous avons ajouté \motif{+}, utilisé dans l'exemple du sujet
-\motif{S(a|g|r)+on}. Les autres opérateurs (\motif{?}, \motif{\{\}},
+parenthèses. Nous avons ajouté \motif{+} en plus. Les autres opérateurs (\motif{?}, \motif{\{\}},
 \motif{[]}, \motif{\textasciicircum}, \motif{\$}) sont lus comme des lettres.
 
 Le programme suit les cinq étapes vues en cours :
 \begin{enumerate}
-  \item motif $\to$ arbre syntaxique (\texttt{RegexParser}) ;
-  \item arbre $\to$ automate non déterministe avec $\eps$-transitions, méthode
-        d'Aho-Ullman (\texttt{Ndfa}) ;
+  \item motif $\to$ arbre syntaxique (\texttt{RegexParser.java}) ;
+  \item arbre $\to$ automate non déterministe avec $\eps$-transitions
+        (\texttt{Ndfa.java}), méthode d'Aho-Ullman ;
   \item $\eps$-AFN $\to$ automate déterministe, méthode des sous-ensembles
-        (\texttt{Determinisation}) ;
+        (\texttt{Determinisation.java}) ;
   \item automate déterministe $\to$ automate minimal, algorithme de Moore
-        (\texttt{Minimisation}) ;
-  \item parcours de chaque ligne par l'automate (\texttt{Dfa}).
+        (\texttt{Minimisation.java}) ;
+  \item parcours de chaque ligne par l'automate (\texttt{Dfa.java}).
 \end{enumerate}
 Lorsque l'arbre obtenu à l'étape 1 n'est qu'une suite de concaténations de
 lettres, le motif est un simple mot : les étapes 2 à 5 sont alors remplacées par
-l'algorithme de Knuth-Morris-Pratt (\texttt{Kmp}). Le choix est fait par
-\texttt{Recherche.pour}, et l'option \texttt{-{}-dfa} force l'automate pour pouvoir
+l'algorithme de Knuth-Morris-Pratt (\texttt{Kmp.java}). Le choix est fait par
+la méthode \texttt{pour} de \texttt{Recherche.java}, et l'option \texttt{-{}-dfa} force l'automate pour pouvoir
 comparer les deux méthodes. Sans option, la sortie est celle d'\texttt{egrep} (les
 lignes trouvées, telles quelles) et le code de retour aussi : 0 si une ligne est
 trouvée, 1 sinon, 2 en cas d'erreur. L'option \texttt{-{}-detail} numérote les
@@ -72,7 +71,7 @@ performances, comparées à celles de GNU \texttt{grep}.
 \section{Du motif à l'arbre syntaxique}
 \label{sec:arbre}
 
-\paragraph{Structure de données.} L'arbre (\texttt{RegexTree}) a cinq sortes de
+\paragraph{Structure de données.} L'arbre (\texttt{RegexTree.java}) a cinq sortes de
 n\oe uds : \texttt{Feuille} (une lettre), \texttt{Point}, \texttt{Concat},
 \texttt{Union} et \texttt{Etoile}. Chaque sorte est un \texttt{record} Java qui
 porte exactement ses fils, ce qui rend impossible un n\oe ud \texttt{Union} à un
@@ -84,7 +83,7 @@ que modifier la forme de l'arbre.
 insérer un opérateur de concaténation explicite (un caractère de contrôle, qui ne
 peut pas apparaître dans un motif saisi) entre deux éléments qui se suivent.
 Le motif est ensuite mis en notation postfixe par l'algorithme
-\emph{shunting-yard} de Dijkstra~\cite{dijkstra}, avec les priorités
+\emph{shunting-yard}, avec les priorités
 $\motif{*} = \motif{+} > \text{concaténation} > \motif{|}$. Enfin, une pile
 reconstruit l'arbre à partir de la notation postfixe. Les deux passes sont
 linéaires en la longueur $m$ du motif. Un motif mal formé (parenthèse non
@@ -153,12 +152,21 @@ les autres caractères. L'automate est en outre partiel : l'absence de transitio
 tient lieu d'état puits. C'est ce qui rend le point utilisable sans énumérer
 l'alphabet.
 
+\paragraph{Structure de données.} Le DFA range ses transitions dans un tableau
+\texttt{int[][]} : la case $[q][j]$ donne l'état atteint depuis $q$ par la
+colonne $j$, ou $-1$ s'il n'y a pas de transition. Un second tableau, indexé par
+le code du caractère et de la taille du plus grand caractère du motif plus un,
+donne la colonne de chaque caractère ; un caractère absent du motif, ou au-delà
+du tableau, va dans la colonne \og autre \fg{}. Lire un caractère coûte ainsi
+deux accès à un tableau, sans allocation. Notre première version utilisait une
+\texttt{HashMap} par état, nettement plus lente (section~\ref{sec:table}).
+
 \paragraph{Complexité.} Pour un $\eps$-AFN à $n$ états, le DFA peut avoir
 jusqu'à $2^n$ états, et chacun coûte $O(n)$ par symbole à construire. Ce pire cas
 est atteint : la section~\ref{sec:etats} le mesure sur une famille de motifs dont
 le DFA a $2^{k+1}$ états. Sur des motifs courants en revanche, l'explosion ne
 se produit pas : pour les huit motifs de la section~\ref{sec:perf}, la
-construction complète (étapes 1 à 4) prend entre 0,08 et 1~ms.
+construction complète (étapes 1 à 4) prend entre 0,06 et 0,45~ms.
 
 \section{Minimisation}
 \label{sec:min}
@@ -179,7 +187,7 @@ y a au plus $n$ tours, d'où $O(n^2|\Sigma|)$ dans le pire cas. L'algorithme de
 Hopcroft~\cite{hopcroft} atteint $O(|\Sigma|\, n \log n)$ en ne raffinant que
 par rapport à la plus petite des deux moitiés d'une classe coupée. Nous avons
 gardé Moore, plus simple, car la minimisation ne coûte presque rien ici : sur
-nos motifs, les étapes 1 à 4 réunies prennent au plus 1~ms.
+nos motifs, les étapes 1 à 4 réunies prennent moins d'une demi-milliseconde.
 
 \paragraph{Apport réel.} La minimisation est garantie optimale, mais elle gagne
 peu sur nos motifs. Pour \motif{S(a|g|r)+on}, l'automate minimal a cinq états
@@ -267,9 +275,11 @@ tableau $\mathit{report}$.
 
 \paragraph{Critique.} KMP a la même complexité que notre automate de
 $\motif{.*}R$ (qui est d'ailleurs, pour un mot, essentiellement l'automate des
-occurrences de $F$), mais il n'a rien à construire et il compare des caractères
-dans un tableau au lieu de consulter une table de transitions. En pratique, il
-est trois fois plus rapide que notre automate (section~\ref{sec:perf}). Il n'est
+occurrences de $F$), et il n'a rien à construire. En pratique, il est 1,1 à
+1,7 fois plus rapide que notre automate (section~\ref{sec:perf}) : pour chaque
+caractère du texte, il compare deux caractères, alors que l'automate lit deux
+tableaux. Avec notre première table de transitions, à base de \texttt{HashMap},
+l'écart était d'un facteur trois environ (section~\ref{sec:table}). Il n'est
 pas pour autant optimal : l'algorithme de Boyer-Moore~\cite{boyermoore} compare
 le mot en partant de sa fin et peut sauter jusqu'à $m$ caractères d'un coup. Il
 est sous-linéaire en moyenne sur un texte en langue naturelle, et c'est lui
@@ -340,8 +350,9 @@ de 18).
 
 La figure~\ref{fig:taille} montre que tous les temps sont linéaires en la taille
 du texte, ce qu'annonce l'analyse. Pour la recherche seule, KMP traite environ
-3,5~ms par Mo et l'automate 12,4~ms par Mo sur le mot \motif{Babylon}. Le motif
-\motif{S(a|g|r)+on} coûte autant que \motif{Babylon} avec l'automate, car le DFA
+1,8~ms par Mo et l'automate 2,7~ms par Mo sur le mot \motif{Babylon}. Le motif
+\motif{S(a|g|r)+on} coûte à peu près autant que \motif{Babylon} avec
+l'automate (12~\% de plus à 32~Mo), car le DFA
 fait une transition par caractère quel que soit le motif : une fois l'automate
 construit, la complexité du motif ne compte plus.
 
@@ -354,23 +365,22 @@ de Java compris.}
 \label{fig:taille}
 \end{figure}
 
-Pourquoi l'automate est-il 3,5 fois plus lent que KMP, alors que les deux
-lisent chaque caractère une fois ? Notre table de transitions est une
-\texttt{HashMap<Character, Integer>} par état : chaque caractère lu coûte un
-calcul de hachage et une indirection, contre une simple comparaison de deux
-caractères pour KMP, qui reporte rarement sur un texte en langue naturelle.
-Remplacer cette table par un tableau d'entiers indexé par l'état et par la
-colonne du caractère est la première amélioration à faire (section~\ref{sec:conclusion}).
+L'automate reste un peu plus lent que KMP, alors que les deux lisent chaque
+caractère une fois : il fait deux accès à un tableau par caractère, contre une
+comparaison de deux caractères pour KMP, qui reporte rarement sur un texte en
+langue naturelle. L'écart était bien plus grand avec notre première table de
+transitions (section~\ref{sec:table}).
 
 \subsection{Selon le motif}
 
 La figure~\ref{fig:motifs} donne le temps de huit motifs sur tout le corpus :
 trois mots plus ou moins fréquents, puis un exemple pour chaque opérateur. Pour
-la recherche seule, le mot fréquent \motif{the} est le plus rapide avec les deux
-méthodes : il apparaît dans 46\,\% des lignes, et la recherche s'arrête à la
-première occurrence au lieu de lire la ligne entière. À l'inverse, \motif{Babylon}
-est rare et oblige à lire presque toutes les lignes jusqu'au bout. KMP est 2,3 à
-3,5 fois plus rapide que l'automate sur les trois mots.
+la recherche seule avec l'automate, les motifs fréquents \motif{the} et
+\motif{th(e|is|at)} sont les plus rapides : ils apparaissent dans environ la
+moitié des lignes, et la recherche s'arrête à la première occurrence au lieu de
+lire la ligne entière. Les motifs rares, comme \motif{Babylon} ou
+\motif{colou*r}, obligent au contraire à lire presque toutes les lignes jusqu'au
+bout. Sur les trois mots, KMP est 1,1 à 1,7 fois plus rapide que l'automate.
 
 \begin{figure}[ht]
 \centering
@@ -384,19 +394,19 @@ indique combien de fois le clone est plus lent.}
 
 \subsection{Comparaison avec \texttt{egrep}}
 
-En commande complète, le clone est 11 à 24 fois plus lent qu'\texttt{egrep}
+En commande complète, le clone est 6 à 23 fois plus lent qu'\texttt{egrep}
 (figure~\ref{fig:motifs}, à droite). Une partie de l'écart est fixe : sur un
-fichier vide, le clone met 54~ms (écart type 6,6) à s'exécuter, contre 1,4~ms
+fichier vide, le clone met 55~ms (écart type 4,1) à s'exécuter, contre 1,4~ms
 pour \texttt{egrep}, et c'est presque entièrement le démarrage de la machine
 virtuelle Java. Le reste grandit avec le texte : à 32~Mo, la commande complète
-avec KMP prend 316~ms alors que la recherche seule n'en prend que 111. La
+avec KMP prend 363~ms alors que la recherche seule n'en prend que 57. La
 différence correspond à ce que le clone fait en plus de chercher : lire le
 fichier entier, le découper, décoder chaque ligne en chaîne Java, écrire les
 lignes trouvées, le tout au début avec du code que le compilateur à la volée n'a
 pas encore optimisé. Le nombre de lignes écrites compte aussi : avec KMP,
-\motif{the} et \motif{Holmes} ont le même temps de recherche, mais la commande
-complète coûte 100~ms de plus pour \motif{the}, qui fait écrire 56\,018 lignes
-au lieu de 460.
+\motif{the} et \motif{Holmes} ont presque le même temps de recherche (13 et
+11~ms), mais la commande complète coûte près de 90~ms de plus pour \motif{the},
+qui fait écrire 56\,018 lignes au lieu de 460.
 
 GNU \texttt{grep} évite presque tous ces coûts~\cite{haertel} : il travaille sur
 les octets sans les décoder, lit le fichier par blocs, cherche le motif dans le
@@ -404,9 +414,44 @@ bloc entier et ne délimite la ligne qu'autour d'une occurrence trouvée. Pour u
 mot, il utilise Boyer-Moore, qui ne regarde qu'une partie des caractères ; pour
 une expression régulière, il construit l'automate déterministe à la demande,
 seulement pour les états réellement atteints. Enfin, les commandes complètes sont
-nettement plus dispersées que la recherche seule (écart type jusqu'à 134~ms pour
-\motif{Babylon} avec l'automate), ce que nous attribuons au système de fichiers
+nettement plus dispersées que la recherche seule (écart type jusqu'à 56~ms pour
+\motif{Babylon} à 32~Mo avec KMP), ce que nous attribuons au système de fichiers
 de WSL2 et à la variabilité du démarrage de Java.
+
+\subsection{Table de transitions : d'une \texttt{HashMap} à un tableau}
+\label{sec:table}
+
+Notre première version du DFA rangeait les transitions de chaque état dans une
+table de hachage (\texttt{HashMap}), qui associait à chaque \texttt{Character}
+un \texttt{Integer}. Chaque caractère lu coûtait alors un accès
+à la liste des états, la conversion du \texttt{char} en objet \texttt{Character}
+(une allocation au-delà du code 127, par exemple pour les lettres accentuées), un
+calcul de hachage, la recherche dans la table, puis la conversion de
+l'\texttt{Integer} obtenu. La version actuelle (section~\ref{sec:det}) remplace
+tout cela par deux accès à un tableau. Seul le fichier \texttt{Dfa.java} a changé
+entre les deux séries de mesures.
+
+\paragraph{Gain.} En recherche seule, l'automate est 3,4 à 5,6 fois plus rapide
+selon le motif (figure~\ref{fig:table}) : il passe de 12,4 à 2,7~ms par Mo sur
+\motif{Babylon}. Le gain est plus faible en commande complète, où le démarrage de
+Java, la lecture et le découpage du fichier ne changent pas : à 32~Mo, la
+commande avec \texttt{-{}-dfa} passe de 645 à 405~ms, et les cinq motifs de la
+figure~\ref{fig:motifs} qui utilisent l'automate gagnent 28 à 46~\%. Le tableau
+est dense : $n(|\Sigma|+1)$ entiers pour $n$ états, là où la \texttt{HashMap} ne
+stocke que les transitions présentes, mais au prix de plusieurs dizaines
+d'octets par transition. Même pour les 8\,192 états de la
+section~\ref{sec:etats}, le tableau occupe environ 300~Ko.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{table}
+\caption{Recherche seule avec la première table de transitions
+(\texttt{HashMap}, en gris) puis avec le tableau \texttt{int[][]}. À gauche,
+\motif{Babylon} selon la taille du texte, avec KMP mesuré dans chacune des deux
+séries ; à droite, l'automate sur chaque motif du corpus complet, avec le
+facteur gagné.}
+\label{fig:table}
+\end{figure}
 
 \subsection{Explosion du nombre d'états}
 \label{sec:etats}
@@ -417,7 +462,7 @@ $\motif{.*a(a|b)}^k$), pour $k$ de 1 à 12. L'$\eps$-AFN grandit linéairement
 ($6k+6$ états, soit 78 pour $k = 12$), alors que le DFA en a $2^{k+1}+1$ et le
 DFA minimal $2^{k+1}$ : la minimisation ne peut rien fusionner, puisque ces états
 correspondent à des contenus différents des $k+1$ derniers caractères. Le temps de
-construction suit, et double à peu près à chaque $k$ : 121~ms pour 8\,192 états.
+construction suit, et double à peu près à chaque $k$ : 92~ms pour 8\,192 états.
 C'est le risque de la déterminisation complète, et la raison pour laquelle les
 outils réels la font à la demande.
 
@@ -436,16 +481,14 @@ Notre clone implémente les cinq étapes du cours et KMP, et il donne exactement
 sortie d'\texttt{egrep} sur nos instances. La recherche est linéaire grâce à
 l'automate de $\motif{.*}R$, au prix d'un automate qui peut devenir exponentiel
 sur des motifs construits pour cela. Les mesures montrent que la complexité
-asymptotique ne suffit pas à expliquer les temps : à complexité égale, KMP est
-trois fois plus rapide que l'automate, et le clone reste plus de dix fois plus
-lent qu'\texttt{egrep}, surtout à cause de ce qui entoure la recherche.
+asymptotique ne suffit pas à expliquer les temps : à complexité égale, remplacer
+une table de hachage par un tableau a rendu l'automate 3 à 6 fois plus rapide,
+assez pour le rapprocher de KMP, et le clone reste 6 à 23 fois plus lent
+qu'\texttt{egrep}, surtout à cause de ce qui entoure la recherche.
 
 Plusieurs améliorations sont possibles, dans l'ordre de leur rapport
 gain/effort :
 \begin{itemize}
-  \item \textbf{une table de transitions en tableau} \texttt{int[][]}, avec un
-        petit tableau qui associe à chaque caractère sa colonne : c'est la cause
-        identifiée de l'écart entre l'automate et KMP ;
   \item \textbf{chercher sur les octets} plutôt que sur des chaînes décodées, et
         ne délimiter les lignes qu'autour des occurrences, comme \texttt{grep} ;
   \item \textbf{Boyer-Moore} à la place de KMP pour les mots, et, pour une
@@ -466,8 +509,8 @@ texte, au lieu du texte entier.
 
 \section*{Usage de l'intelligence artificielle}
 
-Dans le cadre de ce projet, nous avons utilisé Claude afin de générer les mesures ainsi que les scripts produisant
-les figures. Egalement pour l'implémentation de l'algorithme KMP.
+Dans le cadre de ce projet, nous nous sommes aidé en utilisant Claude pour la réalisation du fichier pour le banc de tests (Mesures.java),
+Ainsi que pour les scripts (pythons) permettant de générer les courbes et graphiques du rapport à partir des mesures csv
 
 \begin{thebibliography}{9}
 \small
@@ -478,8 +521,6 @@ les figures. Egalement pour l'implémentation de l'algorithme KMP.
   algorithm. \emph{Communications of the ACM}, 20(10), p.~762--772, 1977.
 \bibitem{cox} R.~Cox. Regular expression matching can be simple and fast.
   \url{https://swtch.com/~rsc/regexp/regexp1.html}, 2007.
-\bibitem{dijkstra} E.~W. Dijkstra. Algol 60 translation. Rapport MR~34/61,
-  Mathematisch Centrum, Amsterdam, 1961.
 \bibitem{haertel} M.~Haertel. Why GNU grep is fast. Liste de diffusion
   \texttt{freebsd-current}, 2010.
 \bibitem{hopcroft} J.~E. Hopcroft. An $n \log n$ algorithm for minimizing states
