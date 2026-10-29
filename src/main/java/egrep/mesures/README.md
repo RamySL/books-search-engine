@@ -13,10 +13,10 @@ Il écrit ses résultats dans des fichiers CSV, que le rapport transformera en g
 Depuis la racine du projet, après `make` :
 
 ```sh
-java -cp egrep.jar egrep.mesures.Mesures mesures/avant
+java -cp egrep.jar egrep.mesures.Mesures mesures/apres
 ```
 
-Il lui faut `egrep.jar`, les textes de `instances/` et la commande `egrep`. Il tourne en deux minutes environ et écrit ses fichiers dans le dossier donné, ici `mesures/avant/`.
+Il lui faut `egrep.jar`, les textes de `instances/` et la commande `egrep`. Il tourne en une à deux minutes et écrit ses fichiers dans le dossier donné, ici `mesures/apres/`.
 
 ## Deux façons de mesurer
 
@@ -120,4 +120,16 @@ Les cinq méthodes d'expérience sont courtes. La longueur du fichier vient surt
 
 ## Avant et après
 
-`mesures/avant/` contient les résultats avec la table de transitions actuelle de `Dfa`, à base de `HashMap`. Le prochain commit remplacera cette table par un tableau `int[][]`, puis relancera le banc d'essai dans `mesures/apres/`. Seul `Dfa` changera entre les deux, donc l'écart mesuré viendra de la table seule.
+- `mesures/avant/` : la première version de `Dfa`, avec une `HashMap<Character, Integer>` par état ;
+- `mesures/apres/` : la version actuelle, avec un tableau `int[][]` indexé par l'état et par la colonne du caractère.
+
+Seul `Dfa.java` a changé entre les deux séries. En recherche seule, l'automate va 3 à 6 fois plus vite selon le motif : sur `Babylon` à 32 Mo, il met 86 ms au lieu de 396. En commande complète, le gain est plus faible (405 ms au lieu de 645), car le démarrage de Java, la lecture et le découpage du fichier ne changent pas.
+
+**Attention au JIT.** Le code de KMP n'a pas changé, et pourtant son temps en recherche seule a presque été divisé par deux entre les deux séries : 57 ms au lieu de 111 à 32 Mo. Ce n'est pas la machine, puisque relancer l'ancienne version redonne 109 ms. C'est le JIT : toutes les mesures passent par la même méthode `compter`, et le code qu'il produit pour KMP dépend de l'automate qu'il a déjà vu passer dans la même JVM. Une vérification ponctuelle, chaque stratégie seule dans une JVM neuve, sur `Babylon` à 32 Mo, donne :
+
+| | KMP | automate |
+|---|---|---|
+| ancienne `Dfa` | 105 ms | 407 ms |
+| nouvelle `Dfa` | 102 à 113 ms | 122 ms |
+
+Le gain de l'automate tient donc dans tous les cas. L'écart entre KMP et l'automate, lui, dépend du contexte : avec la nouvelle `Dfa`, KMP est 1,1 à 1,7 fois plus rapide.

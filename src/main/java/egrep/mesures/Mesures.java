@@ -24,7 +24,7 @@ import java.util.stream.Stream;
  * Banc d'essai : compare KMP, l'automate et egrep sur les textes de
  * instances/, et écrit les résultats en CSV dans le dossier donné. À lancer
  * depuis la racine du projet, après make :
- * <pre>java -cp egrep.jar egrep.mesures.Mesures mesures/avant</pre>
+ * <pre>java -cp egrep.jar egrep.mesures.Mesures mesures/apres</pre>
  * Chaque mesure est répétée {@link #REPETITIONS} fois, après
  * {@link #ECHAUFFEMENT} tours à vide, et résumée par sa moyenne et son écart
  * type, en millisecondes.
