@@ -1,9 +1,6 @@
 package egrep.automate;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -13,6 +10,8 @@ import java.util.TreeSet;
  * L'alphabet n'est pas énuméré : on garde les caractères explicites de la regex
  * et une unique colonne « autre » pour tout caractère absent de la regex (seules
  * les transitions joker de l'{@link Ndfa} y sont empruntables).
+ * Les transitions sont rangées dans un tableau {@code int[][]} indexé par l'état
+ * et par la colonne du caractère : une transition coûte deux lectures de tableau.
  * L'automate est partiel : l'absence de transition (valeur {@link #AUCUN}) joue
  * le rôle de l'état puits.
  */
@@ -21,34 +20,50 @@ public final class Dfa {
     /** Valeur renvoyée par {@link #suivant} quand il n'y a pas de transition. */
     public static final int AUCUN = -1;
 
-    private final Set<Character> alphabet;
-    // transitions.get(q).get(c) : destination depuis q en lisant le caractère explicite c
-    // TODO: optimisation avec un tableau natif, et réalisation de tests de performances pour comparer à l'ancienne version
-    private final List<Map<Character, Integer>> transitions = new ArrayList<>();
-    // autres.get(q) : destination depuis q en lisant tout caractère hors alphabet
-    private final List<Integer> autres = new ArrayList<>();
-    private final List<Boolean> finaux = new ArrayList<>();
     private static final int ETAT_INITIAL = 0;
+
+    private final Set<Character> alphabet;
+    // colonnes[c] : colonne du caractère c ; un caractère hors alphabet, ou au-delà du tableau, va dans colonneAutre
+    private final int[] colonnes;
+    // dernière colonne : tout caractère hors alphabet
+    private final int colonneAutre;
+    // transitions[q][colonne] : destination depuis q, ou AUCUN ; agrandi au besoin, comme une ArrayList
+    private int[][] transitions = new int[8][];
+    private boolean[] finaux = new boolean[8];
+    private int nbEtats;
 
     /** Automate sans état, que {@link Determinisation} et {@link Minimisation} remplissent. */
     Dfa(Set<Character> alphabet) {
         this.alphabet = alphabet;
+        this.colonneAutre = alphabet.size();
+        int plusGrand = alphabet.stream().mapToInt(c -> c).max().orElse(-1);
+        this.colonnes = new int[plusGrand + 1];
+        Arrays.fill(colonnes, colonneAutre);
+        int colonne = 0;
+        for (char c : alphabet) {
+            colonnes[c] = colonne++;
+        }
     }
 
     /** @return le numéro du nouvel état, sans transition ; le premier créé est l'état initial */
     int creerEtat(boolean final_) {
-        transitions.add(new HashMap<>());
-        autres.add(AUCUN);
-        finaux.add(final_);
-        return transitions.size() - 1;
+        if (nbEtats == transitions.length) {
+            transitions = Arrays.copyOf(transitions, 2 * nbEtats);
+            finaux = Arrays.copyOf(finaux, 2 * nbEtats);
+        }
+        int[] ligne = new int[colonneAutre + 1];
+        Arrays.fill(ligne, AUCUN);
+        transitions[nbEtats] = ligne;
+        finaux[nbEtats] = final_;
+        return nbEtats++;
     }
 
     void ajouterTransition(int source, char c, int destination) {
-        transitions.get(source).put(c, destination);
+        transitions[source][colonnes[c]] = destination;
     }
 
     void definirAutre(int source, int destination) {
-        autres.set(source, destination);
+        transitions[source][colonneAutre] = destination;
     }
 
     /** @return les caractères explicites, qui ont chacun leur colonne de transitions */
@@ -58,11 +73,11 @@ public final class Dfa {
 
     /** @return la destination depuis l'état en lisant un caractère hors alphabet, ou {@link #AUCUN} */
     int autre(int etat) {
-        return autres.get(etat);
+        return transitions[etat][colonneAutre];
     }
 
     public int nbEtats() {
-        return transitions.size();
+        return nbEtats;
     }
 
     public int etatInitial() {
@@ -70,13 +85,12 @@ public final class Dfa {
     }
 
     public boolean estFinal(int etat) {
-        return finaux.get(etat);
+        return finaux[etat];
     }
 
     /** @return la destination depuis l'état en lisant c, ou {@link #AUCUN} */
     public int suivant(int etat, char c) {
-        Integer destination = transitions.get(etat).get(c);
-        return destination != null ? destination : autres.get(etat);
+        return transitions[etat][c < colonnes.length ? colonnes[c] : colonneAutre];
     }
 
     /** @return vrai si le mot complet est reconnu */
@@ -148,12 +162,15 @@ public final class Dfa {
         }
         sb.append("Etats finaux : ").append(etatsFinaux).append("\n\n");
         for (int q = 0; q < nbEtats(); q++) {
-            for (Map.Entry<Character, Integer> t : new java.util.TreeMap<>(transitions.get(q)).entrySet()) {
-                sb.append('q').append(q).append(" --").append(t.getKey()).append("--> q")
-                        .append(t.getValue()).append('\n');
+            for (char c : new TreeSet<>(alphabet)) {
+                int destination = transitions[q][colonnes[c]];
+                if (destination != AUCUN) {
+                    sb.append('q').append(q).append(" --").append(c).append("--> q")
+                            .append(destination).append('\n');
+                }
             }
-            if (autres.get(q) != AUCUN) {
-                sb.append('q').append(q).append(" --autre--> q").append(autres.get(q)).append('\n');
+            if (autre(q) != AUCUN) {
+                sb.append('q').append(q).append(" --autre--> q").append(autre(q)).append('\n');
             }
         }
         return sb.toString();
