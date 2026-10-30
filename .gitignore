@@ -19,3 +19,9 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+
+# Corpus téléchargé et fichiers de travail, reconstruits par le Makefile
+data/
+
+# Client compilé, copié dans le serveur par make client
+serveur/src/main/resources/static/

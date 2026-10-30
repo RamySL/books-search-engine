@@ -1,20 +1,35 @@
-# Clone d'egrep (UE DAAR, projet 1).
-# Compiler et lancer ne demandent qu'un JDK 21 ou plus récent : le code n'a
-# aucune dépendance. Seul make test passe par Maven.
+# Moteur de recherche de livres (UE DAAR, projet 2).
+# Prérequis : JDK 21 ou plus récent et Docker ; Node.js seulement pour
+# recompiler le client. Maven n'a pas besoin d'être installé : ./mvnw le
+# télécharge au premier lancement.
 
-SOURCES := $(shell find src/main/java -name '*.java')
+JAR := serveur/target/serveur-1.0.jar
+STATIC := serveur/src/main/resources/static
 
-.PHONY: all test clean
+.PHONY: all db client build run test clean
 
-all: egrep.jar
+all: build
 
-egrep.jar: $(SOURCES)
-	rm -rf build
-	javac --release 21 -encoding UTF-8 -d build $(SOURCES)
-	jar --create --file egrep.jar --main-class egrep.Egrep -C build .
+# Couche 3 : PostgreSQL dans Docker ; rend la main quand il accepte les connexions.
+db:
+	docker compose up -d --wait db
+
+# Couche 1 : compile le client et le copie là où Spring Boot le sert.
+client:
+	cd client && npm ci && npm run build
+	rm -rf $(STATIC)
+	cp -r client/dist $(STATIC)
+
+# Couche 2 : jar exécutable du serveur, avec le client compilé s'il a été copié.
+build:
+	./mvnw -q package -DskipTests
+
+run: build
+	java -jar $(JAR)
 
 test:
-	mvn test
+	./mvnw test
 
 clean:
-	rm -rf build target egrep.jar
+	./mvnw -q clean
+	rm -rf client/dist $(STATIC)

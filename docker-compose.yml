@@ -1,0 +1,22 @@
+# Couche 3 : le serveur de données. Lancement : make db
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: moteur
+      POSTGRES_USER: moteur
+      POSTGRES_PASSWORD: moteur
+    ports:
+      # en local seulement : le serveur Spring Boot est le seul client de la base
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # depuis PostgreSQL 18, les données vont dans /var/lib/postgresql/18/docker
+      - donnees:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moteur -d moteur"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  donnees:

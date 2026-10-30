@@ -4,61 +4,20 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>fr.egrep</groupId>
-  <artifactId>egrep</artifactId>
+  <!-- Simple agrégateur : construit les deux modules dans le bon ordre (egrep,
+       puis serveur qui en dépend). Chaque module garde son propre parent. -->
+  <groupId>fr.daar</groupId>
+  <artifactId>moteur-recherche</artifactId>
   <version>1.0</version>
-  <packaging>jar</packaging>
+  <packaging>pom</packaging>
 
-  <name>egrep</name>
-  <description>Clone d'egrep : regex -> arbre syntaxique -> automate (Aho-Ullman)</description>
+  <name>moteur-recherche</name>
+  <description>Moteur de recherche de livres (UE DAAR, projet 2)</description>
 
-  <properties>
-    <maven.compiler.release>21</maven.compiler.release>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <junit.version>5.11.4</junit.version>
-    <main.class>egrep.Egrep</main.class>
-  </properties>
-
-  <dependencies>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
-  <build>
-    <plugins>
-      <!-- Version epinglee : celle qu'embarque Maven 3.8 par defaut (3.1) ignore
-           la propriete maven.compiler.release et retombe sur source/target 1.5. -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.13.0</version>
-      </plugin>
-
-      <!-- Execute les tests JUnit 5 de src/test/java pendant la phase test. -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.5.2</version>
-      </plugin>
-
-      <!-- Inscrit la classe principale dans le MANIFEST : rend le jar produit
-           directement executable avec java -jar target/egrep-1.0.jar -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>3.4.2</version>
-        <configuration>
-          <archive>
-            <manifest>
-              <mainClass>${main.class}</mainClass>
-            </manifest>
-          </archive>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
+  <modules>
+    <!-- projet 1 : clone d'egrep, bibliothèque sans dépendance -->
+    <module>egrep</module>
+    <!-- projet 2 : application Spring Boot (API REST, indexation) -->
+    <module>serveur</module>
+  </modules>
 </project>
