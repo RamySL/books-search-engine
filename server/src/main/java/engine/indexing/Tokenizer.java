@@ -1,4 +1,4 @@
-package moteur.indexation;
+package engine.indexing;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,45 +27,45 @@ import java.util.stream.Collectors;
  *   <li>retrait des mots d'une lettre et des mots vides anglais.</li>
  * </ol>
  */
-public final class Tokeniseur {
+public final class Tokenizer {
 
-    private static final Pattern SEPARATEURS = Pattern.compile("\\P{L}+");
+    private static final Pattern SEPARATORS = Pattern.compile("\\P{L}+");
 
     /**
      * Les mots d'une lettre sont surtout des restes d'apostrophes (king's,
      * don't) et des initiales ; dès deux lettres, il y a des mots utiles comme
      * « ur » ou « ox ».
      */
-    private static final int LONGUEUR_MIN = 2;
+    private static final int MIN_LENGTH = 2;
 
-    private static final Set<String> MOTS_VIDES = charger("/mots-vides-en.txt");
+    private static final Set<String> STOP_WORDS = load("/stopwords-en.txt");
 
-    private Tokeniseur() {
+    private Tokenizer() {
     }
 
     /** @return les mots indexables du texte, dans l'ordre du texte, répétitions comprises */
-    public static List<String> mots(String texte) {
-        List<String> mots = new ArrayList<>();
-        for (String morceau : SEPARATEURS.split(Normalizer.normalize(texte, Normalizer.Form.NFC))) {
+    public static List<String> words(String text) {
+        List<String> words = new ArrayList<>();
+        for (String piece : SEPARATORS.split(Normalizer.normalize(text, Normalizer.Form.NFC))) {
             // la locale racine : le résultat ne dépend pas de la langue de la machine
-            String mot = morceau.toLowerCase(Locale.ROOT);
-            if (mot.length() >= LONGUEUR_MIN && !MOTS_VIDES.contains(mot)) {
-                mots.add(mot);
+            String word = piece.toLowerCase(Locale.ROOT);
+            if (word.length() >= MIN_LENGTH && !STOP_WORDS.contains(word)) {
+                words.add(word);
             }
         }
-        return mots;
+        return words;
     }
 
     /** Un mot par ligne ; les lignes vides et celles qui commencent par # sont ignorées. */
-    private static Set<String> charger(String ressource) {
-        InputStream flux = Tokeniseur.class.getResourceAsStream(ressource);
-        if (flux == null) {
-            throw new IllegalStateException("Ressource introuvable : " + ressource);
+    private static Set<String> load(String resource) {
+        InputStream stream = Tokenizer.class.getResourceAsStream(resource);
+        if (stream == null) {
+            throw new IllegalStateException("Ressource introuvable : " + resource);
         }
-        try (BufferedReader lecteur = new BufferedReader(new InputStreamReader(flux, StandardCharsets.UTF_8))) {
-            return lecteur.lines()
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            return reader.lines()
                     .map(String::strip)
-                    .filter(ligne -> !ligne.isEmpty() && !ligne.startsWith("#"))
+                    .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                     .collect(Collectors.toUnmodifiableSet());
         } catch (IOException e) {
             throw new UncheckedIOException(e);

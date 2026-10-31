@@ -3,10 +3,10 @@
 # recompiler le client. Maven n'a pas besoin d'être installé : ./mvnw le
 # télécharge au premier lancement.
 
-JAR := serveur/target/serveur-1.0.jar
-STATIC := serveur/src/main/resources/static
+JAR := server/target/server-1.0.jar
+STATIC := server/src/main/resources/static
 
-.PHONY: all db client build run test clean
+.PHONY: all db client build run corpus index graph test clean
 
 all: build
 
@@ -26,6 +26,11 @@ build:
 
 run: build
 	java -jar $(JAR)
+
+# Précalcul hors ligne, dans cet ordre : corpus, index inversé, graphe de
+# Jaccard et centralités. Options de l'étape : make corpus ARGS=--limit=50
+corpus index graph: build
+	java -jar $(JAR) $@ $(ARGS)
 
 test:
 	./mvnw test

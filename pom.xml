@@ -5,19 +5,19 @@
   <modelVersion>4.0.0</modelVersion>
 
   <!-- Simple agrégateur : construit les deux modules dans le bon ordre (egrep,
-       puis serveur qui en dépend). Chaque module garde son propre parent. -->
+       puis server qui en dépend). Chaque module garde son propre parent. -->
   <groupId>fr.daar</groupId>
-  <artifactId>moteur-recherche</artifactId>
+  <artifactId>search-engine</artifactId>
   <version>1.0</version>
   <packaging>pom</packaging>
 
-  <name>moteur-recherche</name>
+  <name>search-engine</name>
   <description>Moteur de recherche de livres (UE DAAR, projet 2)</description>
 
   <modules>
     <!-- projet 1 : clone d'egrep, bibliothèque sans dépendance -->
     <module>egrep</module>
     <!-- projet 2 : application Spring Boot (API REST, indexation) -->
-    <module>serveur</module>
+    <module>server</module>
   </modules>
 </project>

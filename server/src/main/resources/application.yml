@@ -2,11 +2,11 @@
 # docker-compose.yml ; les variables d'environnement les remplacent.
 spring:
   application:
-    name: moteur-recherche
+    name: search-engine
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/moteur}
-    username: ${DB_USER:moteur}
-    password: ${DB_PASSWORD:moteur}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/engine}
+    username: ${DB_USER:engine}
+    password: ${DB_PASSWORD:engine}
 
 server:
   # toutes les interfaces : les téléphones du réseau local doivent pouvoir se connecter

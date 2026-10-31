@@ -9,8 +9,8 @@ Application web de recherche dans une bibliothèque d'au moins 1664 livres du pr
 | Chemin | Contenu |
 |---|---|
 | `egrep/` | le projet 1, clone d'egrep, utilisé comme bibliothèque pour les expressions régulières (voir `egrep/README.md`) |
-| `serveur/` | le serveur Spring Boot : API REST et accès à la base |
-| `serveur/src/main/resources/db/migration/` | le schéma de la base, appliqué par Flyway au démarrage du serveur |
+| `server/` | le serveur Spring Boot : API REST et accès à la base |
+| `server/src/main/resources/db/migration/` | le schéma de la base, appliqué par Flyway au démarrage du serveur |
 | `client/` | le client web : React, Vite et TypeScript |
 | `docker-compose.yml` | la base PostgreSQL |
 
@@ -39,9 +39,10 @@ Pour travailler sur le client avec rechargement automatique, laisser `make run` 
 | Commande | Effet |
 |---|---|
 | `make db` | démarre PostgreSQL et attend qu'il accepte les connexions |
-| `make client` | compile le client et le copie dans `serveur/src/main/resources/static` |
-| `make build` | produit le jar exécutable `serveur/target/serveur-1.0.jar` |
+| `make client` | compile le client et le copie dans `server/src/main/resources/static` |
+| `make build` | produit le jar exécutable `server/target/server-1.0.jar` |
 | `make run` | compile puis lance le serveur |
+| `make corpus`, `make index`, `make graph` | précalcul hors ligne, dans cet ordre : corpus, index inversé, graphe de Jaccard et centralités ; options de l'étape après `ARGS=` |
 | `make test` | lance les tests JUnit des deux modules |
 | `make clean` | supprime les fichiers produits |
 

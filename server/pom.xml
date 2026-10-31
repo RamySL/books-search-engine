@@ -11,10 +11,10 @@
   </parent>
 
   <groupId>fr.daar</groupId>
-  <artifactId>serveur</artifactId>
+  <artifactId>server</artifactId>
   <version>1.0</version>
 
-  <name>serveur</name>
+  <name>server</name>
   <description>Serveur du moteur de recherche de livres (UE DAAR, projet 2)</description>
 
   <properties>
@@ -81,7 +81,7 @@
 
   <build>
     <plugins>
-      <!-- produit un jar exécutable autonome : java -jar serveur/target/serveur-1.0.jar -->
+      <!-- produit un jar exécutable autonome : java -jar server/target/server-1.0.jar -->
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>

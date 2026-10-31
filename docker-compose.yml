@@ -3,20 +3,20 @@ services:
   db:
     image: postgres:18
     environment:
-      POSTGRES_DB: moteur
-      POSTGRES_USER: moteur
-      POSTGRES_PASSWORD: moteur
+      POSTGRES_DB: engine
+      POSTGRES_USER: engine
+      POSTGRES_PASSWORD: engine
     ports:
       # en local seulement : le serveur Spring Boot est le seul client de la base
       - "127.0.0.1:5432:5432"
     volumes:
       # depuis PostgreSQL 18, les données vont dans /var/lib/postgresql/18/docker
-      - donnees:/var/lib/postgresql
+      - data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U moteur -d moteur"]
+      test: ["CMD-SHELL", "pg_isready -U engine -d engine"]
       interval: 2s
       timeout: 5s
       retries: 30
 
 volumes:
-  donnees:
+  data:
