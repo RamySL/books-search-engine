@@ -25,3 +25,5 @@ data/
 
 # Client compilé, copié dans le serveur par make client
 serveur/src/main/resources/static/
+
+docs/
