@@ -77,6 +77,17 @@
       <artifactId>spring-boot-starter-validation-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- tests avec base : un PostgreSQL jetable dans Docker, voir engine.TestDatabase -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

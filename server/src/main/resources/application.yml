@@ -7,6 +7,10 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/engine}
     username: ${DB_USER:engine}
     password: ${DB_PASSWORD:engine}
+  mvc:
+    # erreurs de l'API en JSON au format Problem Details (RFC 9457)
+    problemdetails:
+      enabled: true
 
 server:
   # toutes les interfaces : les téléphones du réseau local doivent pouvoir se connecter

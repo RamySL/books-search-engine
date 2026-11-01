@@ -46,4 +46,21 @@ Pour travailler sur le client avec rechargement automatique, laisser `make run` 
 | `make test` | lance les tests JUnit des deux modules |
 | `make clean` | supprime les fichiers produits |
 
+`make test` lance un PostgreSQL jetable par Testcontainers : Docker doit tourner.
+
+## API
+
+Les réponses sont en JSON ; les types sont les records de `engine.api` côté serveur et ceux de `client/src/api.ts` côté client. Les listes sont paginées par 20 (`page` commence à 1) sous la forme `{count, next, results}`, où `next` est l'URL de la page suivante ou `null`. Les erreurs suivent le format Problem Details (RFC 9457) : 400 pour un paramètre invalide ou une RegEx mal formée, 404 pour un livre inconnu.
+
+| Requête | Réponse |
+|---|---|
+| `GET /api/search?q=&sort=&page=` | `SearchResponse` : page de `BookSummary`, plus `suggestions`, `terms`, `termsTruncated`, `durationMs` |
+| `GET /api/search/regex?q=&scope=index\|text&sort=&page=` | idem |
+| `GET /api/books?page=` | catalogue : page de `BookSummary` |
+| `GET /api/books/{id}` | `Book` |
+| `GET /api/books/{id}/neighbors` | liste de `Neighbor` : `{book, distance}` |
+| `GET /api/books/{id}/excerpts?regex=&limit=50` | liste de `Excerpt` : `{number, line, occurrences: [[début, fin]]}` |
+
+`sort` vaut `occurrences` (par défaut), `closeness` ou `pagerank` ; `scope` vaut `index` (par défaut) ou `text`.
+
 La connexion à la base se règle par les variables d'environnement `DB_URL`, `DB_USER` et `DB_PASSWORD`. Par défaut, elle vise le conteneur de `docker-compose.yml`.
