@@ -1,5 +1,7 @@
-# Couche 3 : le serveur de données. Lancement : make db
+# Application complète : docker compose up --build, puis http://localhost:8080
+# En développement local, seule la base tourne dans Docker : make db
 services:
+  # Couche 3 : le serveur de données
   db:
     image: postgres:18
     environment:
@@ -7,16 +9,54 @@ services:
       POSTGRES_USER: engine
       POSTGRES_PASSWORD: engine
     ports:
-      # en local seulement : le serveur Spring Boot est le seul client de la base
+      # en local seulement, pour make run hors de Docker
       - "127.0.0.1:5432:5432"
     volumes:
       # depuis PostgreSQL 18, les données vont dans /var/lib/postgresql/18/docker
       - data:/var/lib/postgresql
+    networks:
+      - back
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U engine -d engine"]
       interval: 2s
       timeout: 5s
       retries: 30
 
+  # Couche 2 : l'API REST ; aussi les étapes hors ligne :
+  # docker compose run --rm server corpus --limit=50 (puis index, graph)
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/engine
+      DB_USER: engine
+      DB_PASSWORD: engine
+    volumes:
+      # textes des livres : écrits par l'étape corpus, lus par la RegEx sur le texte
+      - books:/app/data
+    networks:
+      - front
+      - back
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Couche 1 : le client, servi par nginx, qui transmet /api au serveur
+  client:
+    build: client
+    ports:
+      - "8080:80"
+    networks:
+      - front
+    depends_on:
+      - server
+
+# Le client ne voit que le serveur, la base ne voit que le serveur
+networks:
+  front:
+  back:
+
 volumes:
   data:
+  books:

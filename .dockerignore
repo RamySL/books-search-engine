@@ -1,0 +1,6 @@
+# Contexte de build du serveur : seuls mvnw, .mvn, les POM et les sources servent
+.git
+data
+**/target
+client
+server/src/main/resources/static

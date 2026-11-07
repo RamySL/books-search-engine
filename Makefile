@@ -6,7 +6,7 @@
 JAR := server/target/server-1.0.jar
 STATIC := server/src/main/resources/static
 
-.PHONY: all db client build run corpus index graph test clean
+.PHONY: all db client build run corpus index graph test clean up down docker-corpus docker-index docker-graph
 
 all: build
 
@@ -34,6 +34,17 @@ corpus index graph: build
 
 test:
 	./mvnw test
+
+# Application complète dans Docker (base, serveur, client) sur http://localhost:8080
+up:
+	docker compose up -d --build
+
+down:
+	docker compose down
+
+# Précalcul hors ligne dans le conteneur du serveur : make docker-corpus ARGS=--limit=50
+docker-corpus docker-index docker-graph:
+	docker compose run --rm --build server $(@:docker-%=%) $(ARGS)
 
 clean:
 	./mvnw -q clean

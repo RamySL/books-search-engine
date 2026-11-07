@@ -12,7 +12,8 @@ Application web de recherche dans une bibliothèque d'au moins 1664 livres du pr
 | `server/` | le serveur Spring Boot : API REST et accès à la base |
 | `server/src/main/resources/db/migration/` | le schéma de la base, appliqué par Flyway au démarrage du serveur |
 | `client/` | le client web : React, Vite et TypeScript |
-| `docker-compose.yml` | la base PostgreSQL |
+| `docker-compose.yml` | l'application complète : base PostgreSQL, serveur et client |
+| `server/Dockerfile`, `client/Dockerfile` | les images du serveur et du client (nginx) |
 
 ## Prérequis
 
@@ -34,6 +35,21 @@ L'application répond sur http://localhost:8080, et depuis une autre machine du 
 
 Pour travailler sur le client avec rechargement automatique, laisser `make run` tourner et lancer `npm run dev` dans `client/` : Vite sert le client sur http://localhost:5173 et transmet les requêtes `/api` au serveur.
 
+## Lancer avec Docker
+
+Seul Docker est nécessaire :
+
+```sh
+docker compose up -d --build
+docker compose run --rm server corpus --limit=50
+docker compose run --rm server index
+docker compose run --rm server graph
+```
+
+L'application répond sur http://localhost:8080. Le client est servi par nginx, qui transmet `/api` au serveur. Deux réseaux séparent les couches : `front` relie le client au serveur, `back` le serveur à la base ; le client n'atteint donc jamais la base. Deux volumes gardent les données : `data` pour PostgreSQL, `books` pour les textes des livres.
+
+`docker compose down` arrête l'application ; `docker compose down -v` efface aussi la base et les textes.
+
 ## Commandes
 
 | Commande | Effet |
@@ -44,6 +60,8 @@ Pour travailler sur le client avec rechargement automatique, laisser `make run` 
 | `make run` | compile puis lance le serveur |
 | `make corpus`, `make index`, `make graph` | précalcul hors ligne, dans cet ordre : corpus, index inversé, graphe de Jaccard et centralités ; options de l'étape après `ARGS=` |
 | `make test` | lance les tests JUnit des deux modules |
+| `make up`, `make down` | démarre ou arrête l'application complète dans Docker |
+| `make docker-corpus`, `make docker-index`, `make docker-graph` | précalcul hors ligne dans le conteneur du serveur ; options après `ARGS=` |
 | `make clean` | supprime les fichiers produits |
 
 `make test` lance un PostgreSQL jetable par Testcontainers : Docker doit tourner.
