@@ -33,6 +33,8 @@ services:
     volumes:
       # textes des livres : écrits par l'étape corpus, lus par la RegEx sur le texte
       - books:/app/data
+      # liste des livres du corpus, écrite par l'étape corpus et versionnée dans le dépôt
+      - ./corpus:/app/corpus
     networks:
       - front
       - back

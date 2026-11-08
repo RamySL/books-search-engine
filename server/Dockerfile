@@ -15,11 +15,14 @@ RUN ./mvnw -q package -DskipTests
 
 # Étape 2 : seulement un JRE et le jar, sans les sources ni Maven
 FROM eclipse-temurin:21-jre
-RUN useradd --system --create-home engine
+# uid 1000, comme le premier utilisateur d'un Linux : il peut écrire dans
+# corpus/, monté depuis le dépôt (l'image fournit déjà ubuntu avec cet uid)
+RUN userdel --remove ubuntu && useradd --uid 1000 --create-home engine
 WORKDIR /app
 COPY --from=build /src/server/target/server-1.0.jar server.jar
-# dossier de travail des étapes hors ligne (textes des livres), monté en volume
-RUN mkdir data && chown engine:engine data
+# dossiers écrits par les étapes hors ligne, montés par docker-compose.yml :
+# data (textes des livres) et corpus (liste des livres)
+RUN mkdir data corpus && chown engine:engine data corpus
 USER engine
 EXPOSE 8080
 # sans argument : serveur web ; sinon le nom de l'étape et ses options,
