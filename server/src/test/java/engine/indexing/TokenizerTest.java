@@ -49,4 +49,18 @@ class TokenizerTest {
         assertEquals(List.of(), Tokenizer.words(""));
         assertEquals(List.of(), Tokenizer.words("The 42 of and..."));
     }
+
+    @Test
+    void wordCountIncludesStopWordsAndOneLetterWords() {
+        // i, saw, a, city, ur, of, the, chaldees
+        assertEquals(8, Tokenizer.countWords("I saw a city: Ur of the Chaldees"));
+    }
+
+    @Test
+    void wordCountSplitsLikeWords() {
+        // the, king, s, men, won, t, wait, days : les nombres ne sont pas des mots
+        assertEquals(8, Tokenizer.countWords("The king's men won't wait 12 days"));
+        assertEquals(1, Tokenizer.countWords("café"));
+        assertEquals(0, Tokenizer.countWords(" 42 ... "));
+    }
 }

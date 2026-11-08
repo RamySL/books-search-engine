@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -30,6 +31,9 @@ import java.util.stream.Collectors;
 public final class Tokenizer {
 
     private static final Pattern SEPARATORS = Pattern.compile("\\P{L}+");
+
+    /** Un mot : une suite de lettres, entre deux séparateurs. */
+    private static final Pattern WORD = Pattern.compile("\\p{L}+");
 
     /**
      * Les mots d'une lettre sont surtout des restes d'apostrophes (king's,
@@ -54,6 +58,20 @@ public final class Tokenizer {
             }
         }
         return words;
+    }
+
+    /**
+     * Taille d'un texte en mots : même découpage que {@link #words}, mais
+     * mots vides et mots d'une lettre compris. C'est la taille du livre, pas
+     * celle de sa table d'index.
+     */
+    public static int countWords(String text) {
+        Matcher matcher = WORD.matcher(Normalizer.normalize(text, Normalizer.Form.NFC));
+        int count = 0;
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
     }
 
     /** Un mot par ligne ; les lignes vides et celles qui commencent par # sont ignorées. */

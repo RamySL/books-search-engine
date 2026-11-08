@@ -66,6 +66,22 @@ L'application répond sur http://localhost:8080. Le client est servi par nginx, 
 
 `make test` lance un PostgreSQL jetable par Testcontainers : Docker doit tourner.
 
+## Précalcul hors ligne
+
+Trois étapes, dans cet ordre : `corpus`, `index`, `graph` (`make corpus`, ou `docker compose run --rm server corpus` dans Docker).
+
+### `corpus`
+
+Télécharge les livres depuis un miroir de Project Gutenberg, retire l'en-tête et le pied de page de Gutenberg, garde les livres d'au moins 10 000 mots et remplit la table `book`. Un mot est une suite de lettres ; les mots vides comptent.
+
+- **Livres** : ceux de `corpus/ids.txt` s'il existe ; sinon, les textes anglais du catalogue de Gutenberg par numéro croissant, jusqu'à 2000 livres retenus. Le premier lancement complet écrit cette liste, qui n'est plus réécrite ensuite.
+- **Durée** : une requête à la fois, avec une pause de 2 s entre deux téléchargements ; compter plusieurs heures pour le corpus complet. Interrompue, l'étape reprend où elle en était.
+- **`--limit=N`** : s'arrêter à N livres, pour un petit corpus de développement (`make corpus ARGS=--limit=50`). N'écrit pas `corpus/ids.txt`.
+- **Fichiers** : textes nettoyés dans `data/books/<id>.txt` ; catalogue de Gutenberg et livres rejetés dans `data/`.
+- **Réglages**, par variables d'environnement : `DATA_DIR` (dossier `data`), `CORPUS_IDS` (liste des livres), `GUTENBERG_MIRROR` (par défaut `https://gutenberg.pglaf.org`).
+
+Relancer `corpus` vide aussi l'index et le graphe, qu'il faut alors recalculer.
+
 ## API
 
 Les réponses sont en JSON ; les types sont les records de `engine.api` côté serveur et ceux de `client/src/api.ts` côté client. Les listes sont paginées par 20 (`page` commence à 1) sous la forme `{count, next, results}`, où `next` est l'URL de la page suivante ou `null`. Les erreurs suivent le format Problem Details (RFC 9457) : 400 pour un paramètre invalide ou une RegEx mal formée, 404 pour un livre inconnu.

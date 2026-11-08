@@ -10,8 +10,8 @@ COPY egrep/pom.xml egrep/
 COPY server/pom.xml server/
 COPY egrep/src egrep/src
 COPY server/src server/src
-# le cache garde les dépendances Maven d'un build à l'autre
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -q package -DskipTests
+
+RUN ./mvnw -q package -DskipTests
 
 # Étape 2 : seulement un JRE et le jar, sans les sources ni Maven
 FROM eclipse-temurin:21-jre

@@ -12,6 +12,16 @@ spring:
     problemdetails:
       enabled: true
 
+# Étape corpus. Les chemins relatifs partent du dossier de lancement ; dans
+# Docker, data/ est le volume des textes.
+corpus:
+  # textes des livres (books/), catalogue de Gutenberg et livres rejetés
+  data-dir: ${DATA_DIR:data}
+  # liste des livres du corpus, versionnée pour le reproduire
+  ids-file: ${CORPUS_IDS:corpus/ids.txt}
+  # miroir officiel : le site principal de Gutenberg bloque les accès automatisés
+  mirror: ${GUTENBERG_MIRROR:https://gutenberg.pglaf.org}
+
 server:
   # toutes les interfaces : les téléphones du réseau local doivent pouvoir se connecter
   address: 0.0.0.0

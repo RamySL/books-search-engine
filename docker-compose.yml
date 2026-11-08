@@ -1,7 +1,6 @@
 # Application complète : docker compose up --build, puis http://localhost:8080
 # En développement local, seule la base tourne dans Docker : make db
 services:
-  # Couche 3 : le serveur de données
   db:
     image: postgres:18
     environment:
@@ -22,7 +21,6 @@ services:
       timeout: 5s
       retries: 30
 
-  # Couche 2 : l'API REST ; aussi les étapes hors ligne :
   # docker compose run --rm server corpus --limit=50 (puis index, graph)
   server:
     build:
@@ -42,7 +40,6 @@ services:
       db:
         condition: service_healthy
 
-  # Couche 1 : le client, servi par nginx, qui transmet /api au serveur
   client:
     build: client
     ports:

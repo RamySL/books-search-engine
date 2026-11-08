@@ -56,6 +56,12 @@
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-database-postgresql</artifactId>
     </dependency>
+    <!-- lecture du catalogue de Gutenberg (CSV avec retours à la ligne entre guillemets) -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-csv</artifactId>
+      <version>1.14.1</version>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
