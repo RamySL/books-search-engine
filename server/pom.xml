@@ -42,10 +42,10 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-jdbc</artifactId>
     </dependency>
+    <!-- pilote PostgreSQL, utilisé aussi directement pour le chargement par COPY -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <scope>runtime</scope>
     </dependency>
     <!-- schéma de la base versionné dans src/main/resources/db/migration -->
     <dependency>

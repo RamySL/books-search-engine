@@ -41,10 +41,7 @@ import java.util.stream.Stream;
 @Component
 class CorpusStep implements OfflineStep {
 
-    /** Taille minimale d'un livre, en mots. */
-    static final int MIN_WORDS = 10_000;
-
-    /** Nombre de livres visé : une marge au-dessus du minimum de 1664. */
+    /** Nombre de livres visé : une marge au-dessus du minimum. */
     private static final int TARGET = 2_000;
 
     /** Deux livres sur Sargon d'Akkad, l'exemple type de recherche. */
@@ -161,7 +158,7 @@ class CorpusStep implements OfflineStep {
                 continue;
             }
             int words = Tokenizer.countWords(text.get());
-            if (words < MIN_WORDS) {
+            if (words < Corpus.MIN_WORDS) {
                 reject(id, words + " mots");
                 Files.deleteIfExists(file);
                 continue;

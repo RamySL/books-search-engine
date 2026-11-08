@@ -82,6 +82,14 @@ Télécharge les livres depuis un miroir de Project Gutenberg, retire l'en-tête
 
 Relancer `corpus` vide aussi l'index et le graphe, qu'il faut alors recalculer.
 
+### `index`
+
+Construit l'index inversé des livres de la table `book` et le charge dans les tables `term` et `occurrence`.
+
+- Les textes passent par le même découpage que les requêtes : minuscules, mots d'au moins deux lettres, sans les mots vides anglais. Les termes sont numérotés par ordre alphabétique.
+- Le chargement tient en une transaction : interrompue, l'étape laisse l'ancien index en place.
+- L'étape échoue si un livre a moins de 10 000 mots ou si un texte manque. Sous 1664 livres (corpus de développement), elle avertit seulement.
+
 ## API
 
 Les réponses sont en JSON ; les types sont les records de `engine.api` côté serveur et ceux de `client/src/api.ts` côté client. Les listes sont paginées par 20 (`page` commence à 1) sous la forme `{count, next, results}`, où `next` est l'URL de la page suivante ou `null`. Les erreurs suivent le format Problem Details (RFC 9457) : 400 pour un paramètre invalide ou une RegEx mal formée, 404 pour un livre inconnu.
