@@ -19,13 +19,16 @@ import java.util.List;
 import java.util.OptionalDouble;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Étape graph sur la base de test. L'index du jeu d'essai donne
  * d(D1, D3) = d(D2, D3) = 7/9 et d(D1, D2) = 1 (aucun mot commun) : avec
- * θ = 0,8, l'étape doit redonner le chemin D1 - D3 - D2 du jeu d'essai.
+ * θ = 0,8, l'étape doit redonner le chemin D1 - D3 - D2 du jeu d'essai et ses
+ * centralités (closeness 2/3, 2/3, 1 ; PageRank 19/74, 19/74, 18/37).
  */
 @SpringBootTest
 @Import(TestDatabase.class)
@@ -54,21 +57,38 @@ class GraphStepTest {
         return jdbc.sql(sql).query(String.class).list();
     }
 
+    /** Closeness et PageRank de D1, D2, D3. */
+    private List<double[]> centralities() {
+        return jdbc.sql("SELECT closeness, pagerank FROM book ORDER BY id")
+                .query((rs, row) -> new double[] {rs.getDouble(1), rs.getDouble(2)})
+                .list();
+    }
+
+    /** PageRank est itératif : il s'arrête à 1e-12 près du point fixe. */
+    private static void assertCentralities(List<double[]> expected, List<double[]> actual) {
+        assertEquals(expected.size(), actual.size());
+        for (int b = 0; b < expected.size(); b++) {
+            assertArrayEquals(expected.get(b), actual.get(b), 1e-10, "livre D" + (b + 1));
+        }
+    }
+
     private void clearGraph() {
         jdbc.sql("TRUNCATE neighbor").update();
-        jdbc.sql("UPDATE book SET degree = 0").update();
+        jdbc.sql("UPDATE book SET degree = 0, closeness = 0, pagerank = 0").update();
     }
 
     @Test
     void rebuildsTheTestDataGraph() throws IOException {
         List<String> neighbors = rows(NEIGHBORS);
         List<String> degrees = rows(DEGREES);
+        List<double[]> centralities = centralities();
         clearGraph();
 
         graph("--theta=0.8");
 
         assertEquals(neighbors, rows(NEIGHBORS));
         assertEquals(degrees, rows(DEGREES));
+        assertCentralities(centralities, centralities());
     }
 
     @Test
@@ -81,6 +101,9 @@ class GraphStepTest {
         graph("--theta=0.7");
         assertEquals(List.of(), rows(NEIGHBORS));
         assertEquals(List.of("1 0", "2 0", "3 0"), rows(DEGREES));
+        // trois livres isolés : closeness nulle, PageRank uniforme
+        double[] isolated = {0, 1.0 / 3};
+        assertCentralities(List.of(isolated, isolated, isolated), centralities());
     }
 
     @Test
@@ -102,6 +125,25 @@ class GraphStepTest {
         assertEquals(1 + DistanceDistribution.STEPS, lines.size());
         assertEquals("0.77,0.78,2,2,1.33", lines.get(78));
         assertEquals("0.99,1.00,1,2,1.33", lines.getLast());
+    }
+
+    @Test
+    void writesTheCentralities() throws IOException {
+        graph("--theta=0.8");
+
+        List<String> lines = Files.readAllLines(measures.resolve("centralities.csv"));
+        assertEquals(4, lines.size());
+        assertEquals("id,title,degree,closeness,pagerank", lines.getFirst());
+        assertTrue(lines.get(1).startsWith("1,\"D1 : Sargon of Akkad\",1,0.6666666666666666,0.25675675675"));
+        assertTrue(lines.get(3).startsWith("3,\"D3 : Akkad and Babylon\",2,1.0,0.48648648648"));
+    }
+
+    @Test
+    void csvFields() {
+        assertEquals("\"Moby-Dick; or, The Whale\"", GraphStep.quote("Moby-Dick; or, The Whale"));
+        assertEquals("\"The \"\"Mayflower\"\"\"", GraphStep.quote("The \"Mayflower\""));
+        assertEquals("0.000075", GraphStep.decimal(7.5e-5));
+        assertEquals("0.25", GraphStep.decimal(0.25));
     }
 
     @Test

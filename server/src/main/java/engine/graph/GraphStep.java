@@ -10,8 +10,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -19,11 +21,13 @@ import java.util.OptionalDouble;
 import java.util.stream.IntStream;
 
 /**
- * Étape graph : distances de Jaccard entre tous les livres de l'index, puis
- * graphe de seuil, chargé dans neighbor et book.degree.
+ * Étape graph : distances de Jaccard entre tous les livres de l'index, graphe
+ * de seuil, puis centralités closeness et PageRank, chargés dans neighbor et
+ * book (degree, closeness, pagerank).
  * <ul>
- *   <li>L'histogramme des distances est écrit dans distances.csv, au dossier
- *       des mesures, avant tout changement en base.</li>
+ *   <li>Au dossier des mesures : l'histogramme des distances (distances.csv),
+ *       écrit avant tout changement en base, puis les centralités
+ *       (centralities.csv).</li>
  *   <li>Option {@code --theta=θ} : le seuil. Sans elle, le plus petit seuil au
  *       centième qui donne un degré moyen d'au moins 20.</li>
  * </ul>
@@ -67,9 +71,9 @@ class GraphStep implements OfflineStep {
         long rows = index.tables().stream().mapToLong(table -> table.terms().length).sum();
         log.info("Index direct : {} livres, {} lignes, lus en {} s", n, rows, seconds(start));
 
-        long jaccard = System.nanoTime();
+        start = System.nanoTime();
         double[][] matrix = Jaccard.matrix(index.tables());
-        log.info("Jaccard : {} paires en {} s", (long) n * (n - 1) / 2, seconds(jaccard));
+        log.info("Jaccard : {} paires en {} s", (long) n * (n - 1) / 2, seconds(start));
 
         DistanceDistribution distribution = DistanceDistribution.of(matrix);
         Path histogram = measures.dir().resolve("distances.csv");
@@ -86,9 +90,20 @@ class GraphStep implements OfflineStep {
                 graph.edgeCount(), String.format(Locale.ROOT, "%.1f", 2.0 * graph.edgeCount() / n),
                 maxDegree, isolated);
 
-        long save = System.nanoTime();
-        save(index.ids(), graph);
-        log.info("Graphe chargé en base en {} s", seconds(save));
+        start = System.nanoTime();
+        double[] closeness = Closeness.of(graph);
+        log.info("Closeness en {} s", seconds(start));
+        start = System.nanoTime();
+        PageRank.Result pagerank = PageRank.of(graph);
+        log.info("PageRank : {} itérations en {} s", pagerank.iterations(), seconds(start));
+
+        start = System.nanoTime();
+        save(index.ids(), graph, closeness, pagerank.scores());
+        log.info("Graphe et centralités chargés en base en {} s", seconds(start));
+
+        Path centralities = measures.dir().resolve("centralities.csv");
+        Files.write(centralities, centralities());
+        log.info("Centralités écrites dans {}", centralities);
     }
 
     /** --theta=θ, entre 0 exclu et 1 inclus. */
@@ -149,9 +164,9 @@ class GraphStep implements OfflineStep {
 
     /**
      * Remplace le graphe en une transaction : chaque arête dans les deux sens,
-     * puis le degré de chaque livre, compté dans neighbor.
+     * le degré de chaque livre, compté dans neighbor, puis ses centralités.
      */
-    private void save(int[] ids, ThresholdGraph graph) {
+    private void save(int[] ids, ThresholdGraph graph, double[] closeness, double[] pagerank) {
         int arcs = Math.toIntExact(2 * graph.edgeCount());
         int[] from = new int[arcs];
         int[] to = new int[arcs];
@@ -173,8 +188,41 @@ class GraphStep implements OfflineStep {
                     .param(to)
                     .param(distances)
                     .update();
-            jdbc.sql("UPDATE book SET degree = (SELECT count(*) FROM neighbor WHERE book_a = book.id)").update();
+            // un livre absent de l'index garde ses centralités à 0
+            jdbc.sql("""
+                    UPDATE book SET degree = (SELECT count(*) FROM neighbor WHERE book_a = book.id),
+                        closeness = 0, pagerank = 0""").update();
+            jdbc.sql("""
+                            UPDATE book SET closeness = s.closeness, pagerank = s.pagerank
+                            FROM unnest(?::integer[], ?::double precision[], ?::double precision[])
+                                AS s(id, closeness, pagerank)
+                            WHERE book.id = s.id""")
+                    .param(ids)
+                    .param(closeness)
+                    .param(pagerank)
+                    .update();
         });
+    }
+
+    /** Les centralités telles qu'en base, au format CSV, par numéro de livre. */
+    private List<String> centralities() {
+        List<String> lines = new ArrayList<>(List.of("id,title,degree,closeness,pagerank"));
+        jdbc.sql("SELECT id, title, degree, closeness, pagerank FROM book ORDER BY id")
+                .query(rs -> {
+                    lines.add(rs.getInt("id") + "," + quote(rs.getString("title")) + "," + rs.getInt("degree")
+                            + "," + decimal(rs.getDouble("closeness")) + "," + decimal(rs.getDouble("pagerank")));
+                });
+        return lines;
+    }
+
+    /** Champ CSV entre guillemets, guillemets internes doublés : des titres contiennent des virgules. */
+    static String quote(String field) {
+        return '"' + field.replace("\"", "\"\"") + '"';
+    }
+
+    /** Écriture décimale complète, sans exposant : 0.000075 plutôt que 7.5E-5. */
+    static String decimal(double value) {
+        return BigDecimal.valueOf(value).toPlainString();
     }
 
     private static String seconds(long start) {

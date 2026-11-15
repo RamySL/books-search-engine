@@ -92,11 +92,14 @@ Construit l'index inversé des livres de la table `book` et le charge dans les t
 
 ### `graph`
 
-Calcule la distance de Jaccard entre tous les livres de l'index, puis le graphe de seuil : deux livres sont voisins si leur distance est inférieure au seuil θ. Remplit la table `neighbor`, où chaque arête figure dans les deux sens, et la colonne `book.degree`.
+Calcule la distance de Jaccard entre tous les livres de l'index, puis le graphe de seuil : deux livres sont voisins si leur distance est inférieure au seuil θ. Calcule enfin deux centralités dans ce graphe. Remplit la table `neighbor`, où chaque arête figure dans les deux sens, et les colonnes `degree`, `closeness` et `pagerank` de `book`.
 
 - **Distance** : d = 1 − Σ min / Σ max, sur les nombres d'occurrences de chaque mot dans les deux livres, les sommes portant sur l'union de leurs vocabulaires. Elle vaut 0 pour deux livres identiques, 1 s'ils n'ont aucun mot commun.
 - **`--theta=θ`** : le seuil, entre 0 exclu et 1 inclus (`make graph ARGS=--theta=0.6`). Sans cette option, l'étape prend le plus petit seuil au centième qui donne un degré moyen d'au moins 20.
 - **Histogramme des distances** : `measures/distances.csv`, une ligne par tranche de 0,01. `pairs` compte les paires de livres dont la distance tombe dans la tranche ; `edges` et `mean_degree` donnent le nombre d'arêtes et le degré moyen du graphe pour θ = `to`, de quoi choisir θ.
+- **Closeness** : l'inverse de la distance moyenne d'un livre aux autres, en nombre d'arêtes. Le graphe n'étant pas toujours connexe, elle suit la correction de Wasserman et Faust : ((r − 1)/(n − 1)) · ((r − 1)/Σ d), où r est le nombre de livres atteignables, le livre compris. Un livre isolé vaut 0.
+- **PageRank** : la part du temps qu'une marche aléatoire passe sur un livre. Elle suit une arête avec une probabilité proportionnelle à la similarité 1 − d, ou saute vers un livre quelconque avec la probabilité 0,15. Calcul par itération de la puissance, jusqu'à une variation inférieure à 10⁻¹² (200 itérations au plus).
+- **Centralités** : `measures/centralities.csv` (`id`, `title`, `degree`, `closeness`, `pagerank`).
 - Le chargement tient en une transaction : interrompue, l'étape laisse l'ancien graphe en place. Changer θ ne demande pas de refaire l'index.
 - **Réglage**, par variable d'environnement : `MEASURES_DIR` (dossier `measures`).
 
