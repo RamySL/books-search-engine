@@ -46,7 +46,7 @@ docker compose run --rm server index
 docker compose run --rm server graph
 ```
 
-L'application répond sur http://localhost:8080. Le client est servi par nginx, qui transmet `/api` au serveur. Deux réseaux séparent les couches : `front` relie le client au serveur, `back` le serveur à la base ; le client n'atteint donc jamais la base. Deux volumes gardent les données : `data` pour PostgreSQL, `books` pour les textes des livres.
+L'application répond sur http://localhost:8080. Le client est servi par nginx, qui transmet `/api` au serveur. Deux réseaux séparent les couches : `front` relie le client au serveur, `back` le serveur à la base ; le client n'atteint donc jamais la base. Deux volumes gardent les données : `data` pour PostgreSQL, `books` pour les textes des livres. Les dossiers `corpus/` (liste des livres) et `measures/` (mesures pour le rapport) du dépôt sont montés dans le conteneur du serveur.
 
 `docker compose down` arrête l'application ; `docker compose down -v` efface aussi la base et les textes.
 
@@ -89,6 +89,16 @@ Construit l'index inversé des livres de la table `book` et le charge dans les t
 - Les textes passent par le même découpage que les requêtes : minuscules, mots d'au moins deux lettres, sans les mots vides anglais. Les termes sont numérotés par ordre alphabétique.
 - Le chargement tient en une transaction : interrompue, l'étape laisse l'ancien index en place.
 - L'étape échoue si un livre a moins de 10 000 mots ou si un texte manque. Sous 1664 livres (corpus de développement), elle avertit seulement.
+
+### `graph`
+
+Calcule la distance de Jaccard entre tous les livres de l'index, puis le graphe de seuil : deux livres sont voisins si leur distance est inférieure au seuil θ. Remplit la table `neighbor`, où chaque arête figure dans les deux sens, et la colonne `book.degree`.
+
+- **Distance** : d = 1 − Σ min / Σ max, sur les nombres d'occurrences de chaque mot dans les deux livres, les sommes portant sur l'union de leurs vocabulaires. Elle vaut 0 pour deux livres identiques, 1 s'ils n'ont aucun mot commun.
+- **`--theta=θ`** : le seuil, entre 0 exclu et 1 inclus (`make graph ARGS=--theta=0.6`). Sans cette option, l'étape prend le plus petit seuil au centième qui donne un degré moyen d'au moins 20.
+- **Histogramme des distances** : `measures/distances.csv`, une ligne par tranche de 0,01. `pairs` compte les paires de livres dont la distance tombe dans la tranche ; `edges` et `mean_degree` donnent le nombre d'arêtes et le degré moyen du graphe pour θ = `to`, de quoi choisir θ.
+- Le chargement tient en une transaction : interrompue, l'étape laisse l'ancien graphe en place. Changer θ ne demande pas de refaire l'index.
+- **Réglage**, par variable d'environnement : `MEASURES_DIR` (dossier `measures`).
 
 ## API
 

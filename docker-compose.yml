@@ -35,6 +35,8 @@ services:
       - books:/app/data
       # liste des livres du corpus, écrite par l'étape corpus et versionnée dans le dépôt
       - ./corpus:/app/corpus
+      # mesures pour le rapport, écrites par les étapes hors ligne
+      - ./measures:/app/measures
     networks:
       - front
       - back

@@ -22,6 +22,10 @@ corpus:
   # miroir officiel : le site principal de Gutenberg bloque les accès automatisés
   mirror: ${GUTENBERG_MIRROR:https://gutenberg.pglaf.org}
 
+# Mesures écrites par les étapes hors ligne, pour le rapport
+measures:
+  dir: ${MEASURES_DIR:measures}
+
 server:
   # toutes les interfaces : les téléphones du réseau local doivent pouvoir se connecter
   address: 0.0.0.0

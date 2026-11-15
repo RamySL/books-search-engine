@@ -21,8 +21,8 @@ RUN userdel --remove ubuntu && useradd --uid 1000 --create-home engine
 WORKDIR /app
 COPY --from=build /src/server/target/server-1.0.jar server.jar
 # dossiers écrits par les étapes hors ligne, montés par docker-compose.yml :
-# data (textes des livres) et corpus (liste des livres)
-RUN mkdir data corpus && chown engine:engine data corpus
+# data (textes des livres), corpus (liste des livres) et measures (mesures)
+RUN mkdir data corpus measures && chown engine:engine data corpus measures
 USER engine
 EXPOSE 8080
 # sans argument : serveur web ; sinon le nom de l'étape et ses options,
