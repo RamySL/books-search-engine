@@ -1,0 +1,27 @@
+type,query,books,median_ms,min_ms,max_ms
+keyword,"sargon",2,1.769,1.441,1.937
+keyword,"babylon",8,1.180,1.033,1.766
+keyword,"whale",10,1.206,1.054,1.539
+keyword,"napoleon",16,1.324,1.037,2.209
+keyword,"philosophy",25,1.079,1.049,1.195
+keyword,"love",49,1.226,0.992,1.264
+keyword,"king queen",34,0.909,0.864,1.172
+keyword,"ship captain sea",25,1.001,0.808,1.446
+keyword,"war peace",43,1.064,0.960,1.672
+keyword,"the",0,0.004,0.004,0.004
+index,"sarg(o|a)n",2,3.059,1.753,9.010
+index,"bab(y|i)lon",8,2.393,2.088,2.917
+index,"whal(e|es)",16,1.698,1.522,2.201
+index,"c.ty",45,1.427,1.352,1.764
+index,"(k|q)ing",41,2.104,1.687,2.497
+index,"love.*",53,2.371,2.061,2.931
+index,".*tion",57,7.826,7.580,8.079
+index,"a.*z",14,1.038,0.973,1.109
+index,".*",57,24.616,24.480,25.089
+text,"sargon",2,63.961,56.804,78.091
+text,"babylon",11,66.024,55.883,83.644
+text,"whale",16,68.130,64.276,74.010
+text,"sarg(o|a)n",2,81.241,68.690,91.819
+text,"of.the.k(i|a)ng",16,67.397,61.129,87.146
+text,"(k|q)ing",55,85.017,72.668,104.519
+text,"whal(e|es)",16,75.098,60.746,82.143

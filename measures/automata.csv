@@ -1,0 +1,10 @@
+query,states,compile_ms
+"sarg(o|a)n",7,0.038
+"bab(y|i)lon",8,0.033
+"whal(e|es)",7,0.025
+"c.ty",5,0.014
+"(k|q)ing",5,0.019
+"love.*",5,0.019
+".*tion",5,0.028
+"a.*z",3,0.014
+".*",1,0.006

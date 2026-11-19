@@ -1,0 +1,19 @@
+% Partie hors ligne : à rédiger par Ramy. Plan proposé, environ 5 pages,
+% avec pour chaque algorithme : définition et structures de données, état de
+% l'art, arguments des choix, tests, mesures en graphiques et discussion.
+%
+%   - Corpus : sélection dans le catalogue, miroir pglaf, nettoyage, filtre
+%     10 000 mots, reprise ; nombre de livres et histogramme des tailles.
+%   - Index inversé : Tokenizer (NFC, \P{L}+, mots vides), tables term et
+%     occurrence, chargement par COPY ; temps et taille selon n.
+%   - Distance de Jaccard pondérée : définition, exemple D1-D3, calcul par
+%     fusion de tableaux triés, O(n^2) paires ; temps selon n.
+%   - Graphe de seuil : choix de theta (distances.csv), degré moyen,
+%     composantes connexes.
+%   - Closeness (Wasserman et Faust) et PageRank pondéré : définitions,
+%     algorithmes, exemples sur des livres bien choisis (centralities.csv),
+%     comparaison des classements ; pourquoi pas betweenness.
+\section{Partie hors ligne : corpus, index et graphe de Jaccard}
+\label{sec:horsligne}
+
+\emph{Section rédigée par Ramy Sail.}

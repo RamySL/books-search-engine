@@ -1,0 +1,169 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,calc}
+\usepackage[hidelinks]{hyperref}
+
+\hypersetup{
+  pdftitle={Projet 2 DAAR : moteur de recherche de livres},
+  pdfauthor={Ramy Sail, Younes Bensallah}
+}
+
+\captionsetup{font=small,labelfont=bf}
+\graphicspath{{figures/}}
+
+\newcommand{\motif}[1]{\texttt{#1}}
+\newcommand{\api}[1]{\texttt{#1}}
+
+\title{Projet 2 -- Moteur de recherche de livres\\[2pt]
+  \large Application web sur une bibliothèque du projet Gutenberg}
+\author{Ramy Sail \and Younes Bensallah}
+\date{UE DAAR -- Master 2 -- novembre 2026}
+
+\begin{document}
+\maketitle
+
+% Introduction et architecture : rédigées à deux (brouillon de Younes, à relire par Ramy).
+\section{Introduction}
+\label{sec:intro}
+
+Le sujet demande une application web et mobile de recherche dans une
+bibliothèque d'au moins 1664 livres de 10\,000 mots ou plus. Nous avons retenu
+2002 livres anglais du projet Gutenberg (liste versionnée dans
+\texttt{corpus/ids.txt}). L'application offre les quatre fonctionnalités
+exigées :
+\begin{itemize}
+  \item \textbf{recherche par mot-clé} dans l'index inversé ;
+  \item \textbf{recherche par RegEx}, au choix sur les termes de l'index (rapide)
+        ou sur le texte intégral des livres (lent, signalé dans l'interface) ;
+  \item \textbf{classement implicite} des résultats, par nombre d'occurrences ou
+        par centralité (closeness, PageRank) dans le graphe de Jaccard ;
+  \item \textbf{recommandations implicites} : à chaque recherche, les voisins des
+        meilleurs résultats dans le graphe de Jaccard.
+\end{itemize}
+Les expressions régulières sont traitées par notre clone d'\texttt{egrep} du
+projet~1 (automate d'Aho-Ullman, déterminisation, minimisation de Moore, KMP),
+réutilisé tel quel comme bibliothèque.
+
+\paragraph{Répartition.} Ramy Sail a écrit la chaîne hors ligne (corpus, index
+inversé, graphe de Jaccard, centralités), Younes Bensallah la partie en ligne
+(recherches, classement, recommandations, API, client) et la dockerisation. La
+frontière entre les deux est le schéma SQL : la chaîne hors ligne écrit les
+tables, la partie en ligne ne fait que les lire. Nous avons utilisé des
+assistants d'IA générative pour relire du code, rédiger des tests et mettre en
+forme ce rapport ; les choix et les résultats ont été vérifiés par nous.
+
+\section{Architecture}
+\label{sec:archi}
+
+L'application suit le modèle client-serveur à trois couches du cours~3
+(figure~\ref{fig:archi}). Le \emph{client} est une application React servie en
+fichiers statiques ; il ne parle qu'à l'API REST du \emph{serveur} Spring Boot
+(Java~21), qui lit une base \emph{PostgreSQL}. Le calcul coûteux est fait
+\emph{hors ligne}, par le même jar lancé avec le nom d'une étape
+(\texttt{corpus}, \texttt{index}, \texttt{graph}) : en ligne, une recherche se
+réduit à des lectures dans des tables déjà prêtes, sauf la RegEx sur le texte
+intégral, qui relit les livres.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=3pt, align=center, font=\small, minimum height=1cm, inner sep=4pt},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  lab/.style={font=\scriptsize, midway, fill=white, inner sep=1pt}]
+  \node[box] (tel) {Téléphone\\navigateur};
+  \node[box, below=0.35cm of tel] (pc) {Portable\\navigateur};
+  \node[box, right=1.6cm of $(tel)!0.5!(pc)$] (nginx) {nginx\\client React compilé};
+  \node[box, right=1.6cm of nginx] (srv) {Spring Boot\\API REST \texttt{/api}\\egrep (projet 1)};
+  \node[box, right=1.6cm of srv] (db) {PostgreSQL\\book, term,\\occurrence, neighbor};
+  \node[box, below=0.9cm of srv] (txt) {Textes des livres\\\texttt{data/books/<id>.txt}};
+  \node[box, dashed, below=0.9cm of db] (off) {Étapes hors ligne\\corpus, index, graph};
+  \draw[arr] (tel) -- (nginx);
+  \draw[arr] (pc) -- (nginx);
+  \draw[arr] (nginx) -- (srv) node[lab] {\texttt{/api}};
+  \draw[arr] (srv) -- (db) node[lab] {SQL};
+  \draw[arr] (srv) -- (txt) node[lab] {RegEx texte};
+  \draw[arr, dashed] (off) -- (db);
+  \draw[arr, dashed] (off) -- (txt);
+  \node[draw, dotted, inner sep=6pt, fit=(nginx) (srv) (db) (txt) (off), label={[font=\scriptsize]above right:{machine serveur (Docker Compose)}}] {};
+\end{tikzpicture}
+\caption{Architecture : deux clients sur le réseau local, une machine serveur.
+  Les flèches pointillées sont le précalcul hors ligne.}
+\label{fig:archi}
+\end{figure}
+
+\input{hors-ligne}
+\input{en-ligne}
+\input{pertinence}
+
+% Conclusion : rédigée à deux (brouillon de Younes, à compléter par Ramy).
+\section{Conclusion et perspectives}
+\label{sec:conclusion}
+
+Le moteur répond aux quatre fonctionnalités du sujet sur 2002 livres, et
+fonctionne depuis un téléphone sur le réseau local. Le précalcul hors ligne
+(index inversé, graphe de Jaccard, centralités) rend la recherche par mot-clé
+et la RegEx sur l'index quasi instantanées ; seule la RegEx sur le texte
+intégral reste coûteuse, linéaire en la taille du corpus, comme prévu.
+
+\paragraph{Perspectives.} Plusieurs améliorations classiques des moteurs de
+recherche textuels s'appliqueraient directement :
+\begin{itemize}
+  \item un \textbf{score de pertinence} tf-idf ou BM25~\cite{bm25} à la place du
+        simple nombre d'occurrences, qui favorise les livres longs ;
+  \item la \textbf{racinisation} (Porter) des mots, pour que \motif{whale} trouve
+        aussi \motif{whales} sans RegEx ;
+  \item un \textbf{index de trigrammes}~\cite{trigram} pour la RegEx sur le texte :
+        seuls les livres qui contiennent les trigrammes imposés par la RegEx
+        seraient relus ;
+  \item des \textbf{recommandations collaboratives} (les livres les plus consultés
+        après une recherche semblable), à combiner avec le graphe de Jaccard ;
+  \item le passage à l'échelle de Gutenberg entier (plus de 70\,000 livres) :
+        le calcul de Jaccard en $O(n^2)$ deviendrait le goulot, et il faudrait une
+        approximation (MinHash, LSH).
+\end{itemize}
+
+\begin{thebibliography}{99}
+\small
+\bibitem{ahoullman} A.~V. Aho, J.~D. Ullman. \emph{Foundations of Computer
+  Science}, chapitre~10. Computer Science Press, 1992.
+\bibitem{bm25} S.~Robertson, H.~Zaragoza. The probabilistic relevance framework:
+  BM25 and beyond. \emph{Foundations and Trends in Information Retrieval}, 3(4), 2009.
+\bibitem{boyermoore} R.~S. Boyer, J.~S. Moore. A fast string searching
+  algorithm. \emph{Communications of the ACM}, 20(10), p.~762--772, 1977.
+\bibitem{trigram} R.~Cox. Regular expression matching with a trigram index.
+  \url{https://swtch.com/~rsc/regexp/regexp4.html}, 2012.
+\bibitem{fielding} R.~T. Fielding. \emph{Architectural Styles and the Design of
+  Network-based Software Architectures}, chapitre~5 (REST). Thèse, University of
+  California, Irvine, 2000.
+\bibitem{hopcroft} J.~E. Hopcroft. An $n \log n$ algorithm for minimizing states
+  in a finite automaton. \emph{Theory of Machines and Computations}, Academic
+  Press, 1971.
+\bibitem{iir} C.~D. Manning, P.~Raghavan, H.~Schütze. \emph{Introduction to
+  Information Retrieval}, chapitres~1, 2 et~5. Cambridge University Press, 2008.
+\bibitem{kmp} D.~E. Knuth, J.~H. Morris, V.~R. Pratt. Fast pattern matching in
+  strings. \emph{SIAM Journal on Computing}, 6(2), p.~323--350, 1977.
+\bibitem{lucene} M.~McCandless. Lucene's RegexpQuery and FuzzyQuery: intersecting
+  an automaton with the terms dictionary. \url{https://blog.mikemccandless.com/2011/03/lucenes-fuzzyquery-is-100-times-faster.html}, 2011.
+\bibitem{moore} E.~F. Moore. Gedanken-experiments on sequential machines.
+  \emph{Automata Studies}, Princeton University Press, 1956.
+\bibitem{rfc9457} M.~Nottingham, E.~Wilde, S.~Dalal. Problem Details for HTTP
+  APIs. RFC~9457, IETF, 2023.
+\bibitem{recsys} F.~Ricci, L.~Rokach, B.~Shapira (dir.). \emph{Recommender
+  Systems Handbook}, chapitres~1 à~3. Springer, 2015.
+\bibitem{thompson} K.~Thompson. Regular expression search algorithm.
+  \emph{Communications of the ACM}, 11(6), p.~419--422, 1968.
+\bibitem{zobel} J.~Zobel, A.~Moffat. Inverted files for text search engines.
+  \emph{ACM Computing Surveys}, 38(2), 2006.
+\end{thebibliography}
+
+\end{document}

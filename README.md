@@ -105,7 +105,7 @@ Calcule la distance de Jaccard entre tous les livres de l'index, puis le graphe 
 
 ## API
 
-Les réponses sont en JSON ; les types sont les records de `engine.api` côté serveur et ceux de `client/src/api.ts` côté client. Les listes sont paginées par 20 (`page` commence à 1) sous la forme `{count, next, results}`, où `next` est l'URL de la page suivante ou `null`. Les erreurs suivent le format Problem Details (RFC 9457) : 400 pour un paramètre invalide ou une RegEx mal formée, 404 pour un livre inconnu.
+Les réponses sont en JSON ; les types sont les records de `engine.api` côté serveur et ceux de `client/src/api.ts` côté client. Les listes sont paginées par 20 (`page` commence à 1) sous la forme `{count, next, results}`, où `next` est l'URL de la page suivante ou `null`. Les erreurs suivent le format Problem Details (RFC 9457) : 400 pour un paramètre invalide ou une RegEx mal formée, 404 pour un livre inconnu, 503 si trop de recherches sur le texte intégral sont en cours (2 à la fois au plus).
 
 | Requête | Réponse |
 |---|---|
@@ -114,8 +114,29 @@ Les réponses sont en JSON ; les types sont les records de `engine.api` côté s
 | `GET /api/books?page=` | catalogue : page de `BookSummary` |
 | `GET /api/books/{id}` | `Book` |
 | `GET /api/books/{id}/neighbors` | liste de `Neighbor` : `{book, distance}` |
-| `GET /api/books/{id}/excerpts?regex=&limit=50` | liste de `Excerpt` : `{number, line, occurrences: [[début, fin]]}` |
+| `GET /api/books/{id}/excerpts?regex=&limit=50&words=false` | liste de `Excerpt` : `{number, line, occurrences: [[début, fin]]}` |
 
-`sort` vaut `occurrences` (par défaut), `closeness` ou `pagerank` ; `scope` vaut `index` (par défaut) ou `text`.
+Recherche par mot-clé : chaque mot de `q` est un préfixe (`prin` trouve prince, princess, print…), et un livre doit contenir un terme pour chaque mot (ET). `terms` donne les termes trouvés ; au-delà de 2000 termes pour un préfixe, seuls les plus répandus sont gardés (`termsTruncated`). Pour les extraits, `words=true` ne surligne que les occurrences au début d'un mot, prolongées jusqu'à la fin du mot, comme la recherche par mot-clé.
+
+`sort` vaut `occurrences` (par défaut), `closeness` ou `pagerank` ; `scope` vaut `index` (par défaut) ou `text`. La RegEx sur le texte intégral lit les textes dans `data/books` (`DATA_DIR`).
+
+Les `suggestions` sont les voisins, dans le graphe de Jaccard, des 3 premiers résultats du tri choisi : au plus 10 livres, par distance croissante à l'un d'eux, sans ces 3 livres ni ceux de la page affichée.
 
 La connexion à la base se règle par les variables d'environnement `DB_URL`, `DB_USER` et `DB_PASSWORD`. Par défaut, elle vise le conteneur de `docker-compose.yml`.
+
+## Mesures en ligne
+
+Deux étapes du jar, à lancer sur le corpus complet, écrivent les CSV de `measures/` utilisés par le rapport :
+
+- `bench` (`java -jar server/target/server-1.0.jar bench`, ou `docker compose run --rm server bench`) chronomètre les recherches dans le serveur, sans réseau : `queries.csv` (une liste fixe de requêtes pour les trois recherches), `text-scaling.csv` (RegEx sur le texte selon le nombre de livres, KMP contre automate), `kmp-dfa.csv` (KMP contre automate sur des lignes en mémoire), `vocabulary-scaling.csv` et `automata.csv` (RegEx sur l'index). Option `--runs=N` (5 par défaut) ;
+- `load` est un test de charge de l'API d'un serveur déjà lancé : `load.csv` (débit et latences pour 1 à 32 clients simultanés). Options `--url=` (par défaut http://localhost:8080), `--seconds=` et `--levels=1,2,4,8,16,32`. Dans Docker : `docker compose run --rm server load --url=http://server:8080`.
+
+`python3 rapport/graphiques.py measures rapport/figures` (avec matplotlib) produit ensuite les figures.
+
+## Archive du rendu
+
+```sh
+git archive --format=zip --prefix=daar-assignment2-SAIL-BENSALLAH/ -o daar-assignment2-SAIL-BENSALLAH.zip HEAD
+```
+
+`git archive` ne prend que les fichiers suivis : ni les textes des livres, ni `node_modules`, ni `target`. Le corpus se reconstruit avec `corpus/ids.txt` et l'étape `corpus`. Le rapport compilé, `rapport/rapport.pdf`, doit être commité avant.
