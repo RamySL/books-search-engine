@@ -116,7 +116,7 @@ Les réponses sont en JSON ; les types sont les records de `engine.api` côté s
 | `GET /api/books/{id}/neighbors` | liste de `Neighbor` : `{book, distance}` |
 | `GET /api/books/{id}/excerpts?regex=&limit=50&words=false` | liste de `Excerpt` : `{number, line, occurrences: [[début, fin]]}` |
 
-Recherche par mot-clé : chaque mot de `q` est un préfixe (`prin` trouve prince, princess, print…), et un livre doit contenir un terme pour chaque mot (ET). `terms` donne les termes trouvés ; au-delà de 2000 termes pour un préfixe, seuls les plus répandus sont gardés (`termsTruncated`). Pour les extraits, `words=true` ne surligne que les occurrences au début d'un mot, prolongées jusqu'à la fin du mot, comme la recherche par mot-clé.
+Recherche par mot-clé : chaque mot de `q` doit figurer tel quel dans l'index du livre, et un livre doit contenir tous les mots (ET). `prin` ne trouve donc pas princess ; pour cela, RegEx sur l'index `prin.*`. Pour les extraits, `words=true` ne surligne que les occurrences qui forment un mot entier, comme la recherche par mot-clé.
 
 `sort` vaut `occurrences` (par défaut), `closeness` ou `pagerank` ; `scope` vaut `index` (par défaut) ou `text`. La RegEx sur le texte intégral lit les textes dans `data/books` (`DATA_DIR`).
 

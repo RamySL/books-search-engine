@@ -14,7 +14,7 @@ function BookView() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const hl = params.get('hl') ?? ''
-  // recherche par mot-clé : surligner au début des mots seulement
+  // recherche par mot-clé : surligner en mots entiers seulement
   const words = params.get('words') === '1'
 
   const [input, setInput] = useState(hl)

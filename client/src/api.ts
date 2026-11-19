@@ -119,7 +119,7 @@ export function neighbors(id: number): Promise<Neighbor[]> {
 
 /**
  * Lignes du livre qui contiennent la RegEx (50 au plus par défaut). Avec
- * `words`, seulement au début des mots, comme la recherche par mot-clé.
+ * `words`, seulement en mots entiers, comme la recherche par mot-clé.
  */
 export function excerpts(id: number, regex: string, words?: boolean, limit?: number): Promise<Excerpt[]> {
   return get(`/api/books/${id}/excerpts`, { regex, words: words ? 'true' : undefined, limit })

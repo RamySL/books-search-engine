@@ -41,10 +41,9 @@ class SearchController {
     }
 
     /**
-     * GET /api/search?q=&sort=&page= : les livres qui contiennent, pour
-     * chaque mot de la requête, un terme qui commence par ce mot. La requête
-     * passe par le même tokeniseur que les livres : une requête faite
-     * seulement de mots vides ne trouve rien.
+     * GET /api/search?q=&sort=&page= : les livres qui contiennent tous les
+     * mots de la requête. La requête passe par le même tokeniseur que les
+     * livres : une requête faite seulement de mots vides ne trouve rien.
      */
     @GetMapping
     SearchResponse keyword(@RequestParam String q,

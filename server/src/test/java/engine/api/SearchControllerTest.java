@@ -71,38 +71,18 @@ class SearchControllerTest {
         mvc.perform(get("/api/search").param("q", "babylon nineveh"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(0))
-                .andExpect(jsonPath("$.terms", contains("babylon")));
+                .andExpect(jsonPath("$.terms", contains("babylon", "nineveh")));
     }
 
     @Test
-    void eachWordIsAPrefix() throws Exception {
-        // « sarg » commence sargon ; « ham wro » : hammurabi 2 + wrote 1 dans D2
+    void wordMustBeExact() throws Exception {
+        // « sarg » n'est qu'un début de sargon : c'est la RegEx sarg.* qui le trouve
         mvc.perform(get("/api/search").param("q", "sarg"))
-                .andExpect(jsonPath("$.results[*].id", contains(1)))
-                .andExpect(jsonPath("$.terms", contains("sargon")));
-        mvc.perform(get("/api/search").param("q", "ham wro"))
-                .andExpect(jsonPath("$.results[*].id", contains(2)))
-                .andExpect(jsonPath("$.results[*].occurrences", contains(3)))
-                .andExpect(jsonPath("$.terms", contains("hammurabi", "wrote")));
-    }
-
-    @Test
-    void prefixFindsSeveralTermsAndSumsThem() throws Exception {
-        // « fe » : fell seulement (founded ne commence pas par fe)
-        mvc.perform(get("/api/search").param("q", "fe"))
-                .andExpect(jsonPath("$.terms", contains("fell")));
-        // « e » ne passe pas le tokeniseur, « em » : empire, dans D1 (2) et D3 (1)
-        mvc.perform(get("/api/search").param("q", "em"))
-                .andExpect(jsonPath("$.results[*].id", contains(1, 3)))
-                .andExpect(jsonPath("$.results[*].occurrences", contains(2, 1)));
-    }
-
-    @Test
-    void prefixMustStartTheTerm() throws Exception {
-        // « abylon » est dans babylon, mais ne le commence pas
-        mvc.perform(get("/api/search").param("q", "abylon"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(0))
-                .andExpect(jsonPath("$.terms", empty()));
+                .andExpect(jsonPath("$.terms", contains("sarg")));
+        mvc.perform(get("/api/search").param("q", "sargons"))
+                .andExpect(jsonPath("$.count").value(0));
     }
 
     @Test

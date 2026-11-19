@@ -59,7 +59,7 @@ class BookController {
     /**
      * GET /api/books/{id}/excerpts?regex=&limit=50&words=false : lignes du
      * texte qui contiennent la RegEx, pour les surligner ; avec words=true,
-     * seulement au début des mots, comme la recherche par mot-clé. 400 si la
+     * seulement en mots entiers, comme la recherche par mot-clé. 400 si la
      * RegEx est mal formée.
      */
     @GetMapping("/{id}/excerpts")

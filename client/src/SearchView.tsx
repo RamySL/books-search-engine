@@ -25,16 +25,6 @@ function parseMode(value: string | null): Mode {
   return value === 'index' || value === 'text' ? value : 'keyword'
 }
 
-/**
- * Mots de la requête découpés comme par le tokeniseur du serveur (lettres,
- * minuscules, deux lettres au moins), en ne gardant que ceux qui commencent un
- * des termes trouvés : les mots vides, ignorés par le serveur, ne sont pas surlignés.
- */
-function keywordPrefixes(q: string, terms: string[]): string {
-  return q.toLowerCase().split(/\P{L}+/u)
-    .filter((word) => word.length >= 2 && terms.some((term) => term.startsWith(word)))
-    .join('|')
-}
 
 function parseSort(value: string | null): Sort {
   return value === 'closeness' || value === 'pagerank' ? value : 'occurrences'
@@ -80,11 +70,11 @@ function SearchView() {
     update({ q: input.trim(), mode, sort })
   }
 
-  // pour la vue Livre : la RegEx à surligner ; pour un mot-clé, les mots de la
-  // requête qui ont trouvé des termes, surlignés au début des mots seulement
+  // pour la vue Livre : la RegEx à surligner ; pour un mot-clé, les mots cherchés
+  // (la requête après le tokeniseur du serveur), surlignés en mots entiers
   const highlight: Highlight | undefined = mode !== 'keyword'
     ? { regex: q, words: false }
-    : found.data ? { regex: keywordPrefixes(q, found.data.terms), words: true } : undefined
+    : found.data ? { regex: found.data.terms.join('|'), words: true } : undefined
 
   return (
     <>
@@ -121,8 +111,8 @@ function SearchView() {
 
       {mode === 'keyword' && (
         <p className="hint">
-          Chaque mot cherche les mots qui commencent par lui : « prin » trouve prince, princess, print… Avec
-          plusieurs mots, un livre doit les contenir tous.
+          Mots exacts : un livre doit contenir tous les mots. Pour les mots qui commencent par « prin »
+          (prince, princess…), utilisez la RegEx sur l'index : <code>prin.*</code>
         </p>
       )}
       {mode !== 'keyword' && (

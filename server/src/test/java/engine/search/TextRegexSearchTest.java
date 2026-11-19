@@ -78,16 +78,23 @@ class TextRegexSearchTest {
     }
 
     @Test
-    void wordsModeKeepsOnlyOccurrencesAtTheStartOfAWord() throws IOException {
-        // recherche par mot-clé « prin » : princess et print, pas spring
-        Excerpt excerpt = search("spring, princess and print\nspring only\n").excerpts(1, "prin", 50, true).get(0);
-        assertEquals(2, excerpt.occurrences().size());
-        assertArrayEquals(new int[]{8, 16}, excerpt.occurrences().get(0));
-        assertArrayEquals(new int[]{21, 26}, excerpt.occurrences().get(1));
+    void wordsModeKeepsOnlyWholeWords() throws IOException {
+        // recherche par mot-clé « prin » : ni spring, ni princess, ni print
+        Excerpt excerpt = search("spring, princess, prin and print\n").excerpts(1, "prin", 50, true).get(0);
+        assertEquals(1, excerpt.occurrences().size());
+        assertArrayEquals(new int[]{18, 22}, excerpt.occurrences().get(0));
     }
 
     @Test
-    void wordsModeSkipsLinesWithoutAWordStart() throws IOException {
+    void wordsModeWithSeveralWordsAndPunctuation() throws IOException {
+        // l'apostrophe sépare les mots, comme dans le tokeniseur
+        Excerpt excerpt = search("Babylon's empire\n").excerpts(1, "babylon|empire", 50, true).get(0);
+        assertArrayEquals(new int[]{0, 7}, excerpt.occurrences().get(0));
+        assertArrayEquals(new int[]{10, 16}, excerpt.occurrences().get(1));
+    }
+
+    @Test
+    void wordsModeSkipsLinesWithoutTheWholeWord() throws IOException {
         assertTrue(search("spring only\n").excerpts(1, "prin", 50, true).isEmpty());
         assertEquals(1, search("spring only\n").excerpts(1, "prin", 50, false).size());
     }

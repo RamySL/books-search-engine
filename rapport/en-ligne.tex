@@ -13,31 +13,27 @@ recherche ne touche donc qu'une pièce.
 \label{sec:motcle}
 
 \paragraph{Problème et structure de données.} Étant donnée une requête
-$q = w_1 \dots w_k$, renvoyer les livres dont la table d'index contient, pour
-chaque $w_i$, un terme qui \emph{commence} par $w_i$ : \motif{prin} trouve
-\motif{prince}, \motif{princess}, \motif{print}\dots{} (et \motif{prin}
-lui-même), mais pas \motif{spring}. Nous avions d'abord cherché le mot exact ;
-un premier essai a montré qu'un utilisateur qui tape le début d'un mot
-s'attend à ce comportement, qui couvre aussi les pluriels (\motif{whale}
-trouve \motif{whales}). L'index inversé est la table
+$q = w_1 \dots w_k$, renvoyer, comme le demande le sujet, les livres dont la
+table d'index contient chaque $w_i$ \emph{tel quel} : \motif{prin} ne trouve
+ni \motif{prince} ni \motif{princess}. Pour chercher les variantes d'un mot, on
+passe à la recherche avancée : la RegEx \motif{prin.*} sur l'index
+(section~\ref{sec:regexindex}). L'index inversé est la table
 \texttt{occurrence(term\_id, book\_id, frequency)}, de clé primaire
 $(\mathit{term\_id}, \mathit{book\_id})$ : PostgreSQL la range dans un arbre B,
-donc la \emph{liste de postings} d'un terme se lit par un seul parcours
-d'intervalle. La requête passe par le même \texttt{Tokenizer} que les livres
+donc la \emph{liste de postings} d'un terme (les livres qui le contiennent,
+triés par numéro) se lit par un seul parcours d'intervalle. La table
+\texttt{term} associe chaque mot à son numéro, par un second arbre B sur
+\texttt{word}. La requête passe par le même \texttt{Tokenizer} que les livres
 (normalisation NFC, découpage sur les non-lettres, minuscules, mots vides
-retirés).
+retirés) : un mot saisi s'écrit exactement comme dans l'index.
 
-\paragraph{Algorithme.} Le vocabulaire est gardé en mémoire, avec ses indices
-triés par ordre alphabétique. Les termes qui commencent par $w$ y forment un
-intervalle contigu : une dichotomie trouve le premier terme $\geq w$, puis on
-avance tant que le préfixe correspond, en $O(\log V + m)$ pour $m$ termes
-trouvés ($V$ est la taille du vocabulaire), comme un parcours d'intervalle dans
-un arbre B. Au-delà de 2000 termes pour un même préfixe (\motif{co}), on garde
-les plus répandus et l'interface le signale. La sémantique est un ET : la base
-reçoit les couples (terme, numéro du mot de la requête), lit leurs listes de
-postings, groupe par livre et garde les livres qui couvrent les $k$ mots
-(\texttt{HAVING count(DISTINCT mot) = k}) ; le score est la somme des
-fréquences des termes trouvés. Le coût ne dépend pas de la taille des textes.
+\paragraph{Algorithme.} La sémantique est un ET : un livre est retenu s'il
+contient les $k$ mots, et son score est la somme de leurs fréquences. En SQL,
+on lit les $k$ listes de postings (\texttt{t.word = ANY(?)}), on groupe par
+livre et on garde les groupes de taille $k$ (\texttt{HAVING count(*) = k}). Le
+coût est $O(\sum_i |P(w_i)|)$, où $|P(w)|$ est la longueur de la liste
+de $w$ (au plus 2002), plus $k$ descentes dans l'arbre B des termes : il ne
+dépend pas de la taille des textes.
 
 \paragraph{État de l'art et choix.} L'index inversé est la structure de
 référence de la recherche textuelle~\cite{zobel,iir}. Les moteurs spécialisés
@@ -120,8 +116,9 @@ pas limitées.
 (\api{GET /api/books/\{id\}/excerpts}) : même algorithme sur un seul livre, qui
 renvoie les 50 premières lignes avec les positions $[\text{début},
 \text{fin}[$ des occurrences. Après une recherche par mot-clé, seules les
-occurrences au début d'un mot comptent, prolongées jusqu'à la fin du mot :
-\motif{prin} surligne \motif{princess} en entier, et pas \motif{spring}. Si la mise en minuscules change la longueur
+occurrences qui forment un mot entier comptent, comme dans l'index :
+\motif{prin} ne surligne ni \motif{spring} ni \motif{princess}. Si la mise en
+minuscules change la longueur
 d'une ligne (rare : \og İ \fg{} turc donne deux caractères), on renvoie la
 ligne en minuscules pour que les positions restent justes.
 
@@ -249,15 +246,15 @@ le même jar, qui sert aussi le client compilé.
 \subsection{Tests}
 \label{sec:tests}
 
-Les tests de la partie en ligne (61 tests JUnit, dont 44 avec base) tournent sur le jeu
+Les tests de la partie en ligne (55 tests JUnit, dont 42 avec base) tournent sur le jeu
 d'essai du cours~3 : les trois documents D1 à D3, tokenisés par notre
 \texttt{Tokenizer}, avec des distances et des centralités calculées à la main
 (distance $7/9$, closeness $1$ et $2/3$, PageRank $18/37$ et $19/74$) et leurs
 textes, une phrase par ligne. Spring Boot démarre l'application complète sur
 un PostgreSQL jetable (Testcontainers), et MockMvc vérifie chaque réponse JSON :
 contenu, ordre pour chaque tri, pagination, suggestions, codes d'erreur. Les
-cas limites ont chacun leur test : préfixe contenu dans un terme sans le
-commencer (\motif{abylon}), mot absent de l'index, requête faite de mots
+cas limites ont chacun leur test : mot-clé qui n'est que le début d'un terme
+(\motif{sarg}), mot absent de l'index, requête faite de mots
 vides, RegEx qui ne reconnaît qu'un préfixe d'un terme, RegEx mal formée,
 fichiers en CRLF, ligne dont la longueur change en minuscules. Nous avons enfin
 vérifié à la main, sur de vrais livres, que le compte de la RegEx sur le

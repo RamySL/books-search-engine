@@ -16,7 +16,7 @@ export function Cover({ book, large = false }: { book: { title: string; cover: s
 
 /**
  * Ce que la vue Livre surligne : une RegEx, ou les mots d'une recherche par
- * mot-clé (`words`), surlignés seulement au début des mots.
+ * mot-clé (`words`), surlignés seulement en mots entiers.
  */
 export interface Highlight {
   regex: string

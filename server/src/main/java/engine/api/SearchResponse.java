@@ -11,12 +11,12 @@ import java.util.List;
  * @param results        livres de cette page, dans l'ordre du tri demandé
  * @param suggestions    livres proches des premiers résultats dans le graphe de
  *                       Jaccard (10 au plus), absents des résultats affichés
- * @param terms          mots de l'index réellement cherchés : les termes qui
- *                       commencent par un mot de la requête pour un mot-clé,
- *                       les termes reconnus par l'automate pour une RegEx sur
- *                       l'index, vide pour une RegEx sur le texte intégral
- * @param termsTruncated vrai si un préfixe ou la RegEx trouve trop de termes et
- *                       qu'on n'a gardé que les plus répandus
+ * @param terms          mots de l'index réellement cherchés : la requête après
+ *                       le tokeniseur pour un mot-clé, les termes reconnus par
+ *                       l'automate pour une RegEx sur l'index, vide pour une
+ *                       RegEx sur le texte intégral
+ * @param termsTruncated vrai si la RegEx reconnaît trop de termes et qu'on n'a
+ *                       gardé que les plus répandus
  * @param durationMs     temps de calcul côté serveur, en millisecondes
  */
 public record SearchResponse(

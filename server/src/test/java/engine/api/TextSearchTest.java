@@ -96,11 +96,13 @@ class TextSearchTest {
     }
 
     @Test
-    void excerptsOfAKeywordSearchStartWords() throws Exception {
-        // « emp » surligne empire en entier ; « pire » ne surligne rien
-        mvc.perform(get("/api/books/1/excerpts").param("regex", "emp").param("words", "true"))
+    void excerptsOfAKeywordSearchAreWholeWords() throws Exception {
+        // « empire » est un mot entier ; « emp » et « pire » n'en sont que des morceaux
+        mvc.perform(get("/api/books/1/excerpts").param("regex", "empire").param("words", "true"))
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].occurrences[0]", contains(27, 33)));
+        mvc.perform(get("/api/books/1/excerpts").param("regex", "emp").param("words", "true"))
+                .andExpect(jsonPath("$.length()").value(0));
         mvc.perform(get("/api/books/1/excerpts").param("regex", "pire").param("words", "true"))
                 .andExpect(jsonPath("$.length()").value(0));
         mvc.perform(get("/api/books/1/excerpts").param("regex", "pire"))

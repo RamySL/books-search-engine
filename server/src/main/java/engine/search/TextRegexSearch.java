@@ -92,8 +92,8 @@ public class TextRegexSearch {
      *
      * @param limit nombre maximal de lignes renvoyées, les premières du texte
      * @param words vrai pour surligner une recherche par mot-clé : seules les
-     *              occurrences au début d'un mot comptent, et elles s'étendent
-     *              jusqu'à la fin du mot (« prin » surligne princess, pas spring)
+     *              occurrences qui forment un mot entier comptent (« prin »
+     *              ne surligne ni spring ni princess)
      * @throws IllegalArgumentException si la RegEx est mal formée
      */
     public List<Excerpt> excerpts(int bookId, String regex, int limit, boolean words) {
@@ -120,19 +120,20 @@ public class TextRegexSearch {
         return excerpts;
     }
 
-    /** Occurrences qui commencent un mot, prolongées jusqu'à la fin de ce mot. */
+    /**
+     * Occurrences qui forment un mot entier : ni précédées ni suivies d'une
+     * lettre, comme le découpage du tokeniseur.
+     */
     private static List<int[]> wholeWords(String line, List<int[]> occurrences) {
         List<int[]> kept = new ArrayList<>();
         for (int[] occurrence : occurrences) {
             int start = occurrence[0];
-            if (start > 0 && Character.isLetter(line.charAt(start - 1))) {
-                continue;
-            }
             int end = occurrence[1];
-            while (end < line.length() && Character.isLetter(line.charAt(end))) {
-                end++;
+            boolean letterBefore = start > 0 && Character.isLetter(line.charAt(start - 1));
+            boolean letterAfter = end < line.length() && Character.isLetter(line.charAt(end));
+            if (!letterBefore && !letterAfter) {
+                kept.add(occurrence);
             }
-            kept.add(new int[]{start, end});
         }
         return kept;
     }
