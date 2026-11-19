@@ -1,0 +1,354 @@
+/* Mise en page pensée d'abord pour le téléphone, élargie au-delà de 800 px. */
+
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --text: #1d1c1a;
+  --muted: #66645e;
+  --line: #e2e0d9;
+  --accent: #2a5db0;
+  --accent-text: #ffffff;
+  --mark: #ffe08a;
+  --warning-bg: #fff3d6;
+  --error: #b3261e;
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.45;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615;
+    --surface: #222220;
+    --text: #ecebe6;
+    --muted: #a3a19a;
+    --line: #3a3936;
+    --accent: #7aa7f0;
+    --accent-text: #10131a;
+    --mark: #806000;
+    --warning-bg: #3d3216;
+    --error: #ff8a80;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+}
+
+.top {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.brand {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--text);
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Barre de recherche */
+.search {
+  display: flex;
+  gap: 8px;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.search button {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+.sort {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sort select {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.hint,
+.summary,
+.terms {
+  color: var(--muted);
+  font-size: 0.9em;
+  margin: 8px 0;
+}
+
+.terms {
+  overflow-wrap: anywhere;
+}
+
+.warning {
+  background: var(--warning-bg);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.9em;
+}
+
+.error {
+  color: var(--error);
+}
+
+.loading {
+  color: var(--muted);
+}
+
+/* résultats d'une recherche précédente pendant le chargement de la suivante */
+.stale {
+  opacity: 0.5;
+}
+
+/* Listes de livres */
+.cards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.card-link {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.author {
+  color: var(--muted);
+  font-size: 0.9em;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  font-size: 0.8em;
+  color: var(--muted);
+}
+
+.stats b {
+  color: var(--text);
+}
+
+.cover {
+  width: 56px;
+  height: 84px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.cover.large {
+  width: 96px;
+  height: 144px;
+}
+
+.cover.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.compact .cover {
+  width: 40px;
+  height: 60px;
+}
+
+.suggestions h2 {
+  font-size: 1.05em;
+  margin: 16px 0 0;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+}
+
+/* Vue Livre */
+.back {
+  margin-bottom: 12px;
+}
+
+.book-head {
+  display: flex;
+  gap: 16px;
+}
+
+.book-head > div {
+  min-width: 0;
+}
+
+.book-head h1 {
+  font-size: 1.3em;
+  margin: 0 0 4px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  font-size: 0.9em;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.book section {
+  margin-top: 24px;
+}
+
+.book h2 {
+  font-size: 1.1em;
+}
+
+.excerpts {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  font-family: ui-serif, Georgia, serif;
+}
+
+.excerpts li {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.line-number {
+  flex: none;
+  width: 4em;
+  text-align: right;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8em;
+  padding-top: 2px;
+}
+
+mark {
+  background: var(--mark);
+  color: inherit;
+  border-radius: 2px;
+}
+
+/* Écran large : suggestions à droite des résultats */
+@media (min-width: 800px) {
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .suggestions {
+    position: sticky;
+    top: 16px;
+  }
+
+  .suggestions h2 {
+    margin-top: 0;
+  }
+}
