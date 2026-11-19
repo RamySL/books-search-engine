@@ -35,7 +35,7 @@ class RegexSearchTest {
                 .andExpect(jsonPath("$.results[0].occurrences").value(2))
                 .andExpect(jsonPath("$.terms", contains("sargon")))
                 .andExpect(jsonPath("$.termsTruncated").value(false))
-                .andExpect(jsonPath("$.suggestions", empty()));
+                .andExpect(jsonPath("$.suggestions[*].id", contains(3)));
     }
 
     @Test
@@ -103,8 +103,6 @@ class RegexSearchTest {
     void scope() throws Exception {
         mvc.perform(get("/api/search/regex").param("q", "sargon").param("scope", "index"))
                 .andExpect(status().isOk());
-        mvc.perform(get("/api/search/regex").param("q", "sargon").param("scope", "text"))
-                .andExpect(status().isNotImplemented());
         mvc.perform(get("/api/search/regex").param("q", "sargon").param("scope", "title"))
                 .andExpect(status().isBadRequest());
     }

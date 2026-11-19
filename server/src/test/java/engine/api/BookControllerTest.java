@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
@@ -36,7 +37,7 @@ class BookControllerTest {
                 .andExpect(jsonPath("$.degree").value(2))
                 .andExpect(jsonPath("$.closeness").value(1.0))
                 .andExpect(jsonPath("$.pagerank").value(18.0 / 37))
-                .andExpect(jsonPath("$.cover").value("https://www.gutenberg.org/cache/epub/3/pg3.cover.medium.jpg"));
+                .andExpect(jsonPath("$.cover").value("https://gutenberg.pglaf.org/cache/epub/3/pg3.cover.medium.jpg"));
     }
 
     @Test
@@ -84,6 +85,25 @@ class BookControllerTest {
     void pageZeroGives400() throws Exception {
         mvc.perform(get("/api/books").param("page", "0"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void neighborsSortedByDistanceThenId() throws Exception {
+        // D3 est le centre du chemin D1 - D3 - D2
+        mvc.perform(get("/api/books/3/neighbors"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].book.id", contains(1, 2)))
+                .andExpect(jsonPath("$[0].distance").value(7.0 / 9))
+                .andExpect(jsonPath("$[0].book.title").value("D1 : Sargon of Akkad"))
+                .andExpect(jsonPath("$[0].book.occurrences").value(nullValue()));
+        mvc.perform(get("/api/books/1/neighbors"))
+                .andExpect(jsonPath("$[*].book.id", contains(3)));
+    }
+
+    @Test
+    void neighborsOfAnUnknownBookGive404() throws Exception {
+        mvc.perform(get("/api/books/999/neighbors"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

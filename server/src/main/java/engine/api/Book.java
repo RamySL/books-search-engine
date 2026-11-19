@@ -6,7 +6,7 @@ package engine.api;
  * @param author    null si l'auteur est inconnu
  * @param wordCount nombre de mots du texte, sans l'en-tête ni le pied de page Gutenberg
  * @param degree    nombre de voisins dans le graphe de Jaccard
- * @param cover     URL de la couverture sur gutenberg.org, voir {@link Covers}
+ * @param cover     URL de la couverture, voir {@link Covers}
  */
 public record Book(
         int id,

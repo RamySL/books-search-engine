@@ -37,7 +37,6 @@ class SearchControllerTest {
                 .andExpect(jsonPath("$.results[0].title").value("D2 : Hammurabi of Babylon"))
                 .andExpect(jsonPath("$.terms", contains("babylon")))
                 .andExpect(jsonPath("$.termsTruncated").value(false))
-                .andExpect(jsonPath("$.suggestions", empty()))
                 .andExpect(jsonPath("$.durationMs").isNumber());
     }
 
@@ -72,7 +71,38 @@ class SearchControllerTest {
         mvc.perform(get("/api/search").param("q", "babylon nineveh"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(0))
-                .andExpect(jsonPath("$.terms", contains("babylon", "nineveh")));
+                .andExpect(jsonPath("$.terms", contains("babylon")));
+    }
+
+    @Test
+    void eachWordIsAPrefix() throws Exception {
+        // « sarg » commence sargon ; « ham wro » : hammurabi 2 + wrote 1 dans D2
+        mvc.perform(get("/api/search").param("q", "sarg"))
+                .andExpect(jsonPath("$.results[*].id", contains(1)))
+                .andExpect(jsonPath("$.terms", contains("sargon")));
+        mvc.perform(get("/api/search").param("q", "ham wro"))
+                .andExpect(jsonPath("$.results[*].id", contains(2)))
+                .andExpect(jsonPath("$.results[*].occurrences", contains(3)))
+                .andExpect(jsonPath("$.terms", contains("hammurabi", "wrote")));
+    }
+
+    @Test
+    void prefixFindsSeveralTermsAndSumsThem() throws Exception {
+        // « fe » : fell seulement (founded ne commence pas par fe)
+        mvc.perform(get("/api/search").param("q", "fe"))
+                .andExpect(jsonPath("$.terms", contains("fell")));
+        // « e » ne passe pas le tokeniseur, « em » : empire, dans D1 (2) et D3 (1)
+        mvc.perform(get("/api/search").param("q", "em"))
+                .andExpect(jsonPath("$.results[*].id", contains(1, 3)))
+                .andExpect(jsonPath("$.results[*].occurrences", contains(2, 1)));
+    }
+
+    @Test
+    void prefixMustStartTheTerm() throws Exception {
+        // « abylon » est dans babylon, mais ne le commence pas
+        mvc.perform(get("/api/search").param("q", "abylon"))
+                .andExpect(jsonPath("$.count").value(0))
+                .andExpect(jsonPath("$.terms", empty()));
     }
 
     @Test
@@ -93,6 +123,33 @@ class SearchControllerTest {
         // à occurrences égales, l'ordre suit l'id
         mvc.perform(get("/api/search").param("q", "akkad"))
                 .andExpect(jsonPath("$.results[*].id", contains(1, 3)));
+    }
+
+    @Test
+    void suggestionsAreNeighborsOfTheFirstResults() throws Exception {
+        // sargon : D1 seul, son voisin D3 est suggéré
+        mvc.perform(get("/api/search").param("q", "sargon"))
+                .andExpect(jsonPath("$.suggestions[*].id", contains(3)))
+                .andExpect(jsonPath("$.suggestions[0].occurrences").value(nullValue()));
+        // babylon : D2 et D3 ; D1, voisin de D3, est le seul livre qui n'est pas affiché
+        mvc.perform(get("/api/search").param("q", "babylon"))
+                .andExpect(jsonPath("$.suggestions[*].id", contains(1)));
+        // akkad : D1 et D3 ; D2 est voisin de D3
+        mvc.perform(get("/api/search").param("q", "akkad"))
+                .andExpect(jsonPath("$.suggestions[*].id", contains(2)));
+    }
+
+    @Test
+    void suggestionsNeverRepeatTheFirstResults() throws Exception {
+        // page 2 vide : les premiers résultats (D2, D3) restent exclus des suggestions
+        mvc.perform(get("/api/search").param("q", "babylon").param("page", "2"))
+                .andExpect(jsonPath("$.suggestions[*].id", contains(1)));
+    }
+
+    @Test
+    void noResultNoSuggestion() throws Exception {
+        mvc.perform(get("/api/search").param("q", "nineveh"))
+                .andExpect(jsonPath("$.suggestions", empty()));
     }
 
     @Test

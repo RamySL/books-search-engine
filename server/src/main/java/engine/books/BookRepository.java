@@ -31,6 +31,10 @@ public class BookRepository {
                 .optional();
     }
 
+    public boolean exists(int id) {
+        return jdbc.sql("SELECT EXISTS (SELECT 1 FROM book WHERE id = ?)").param(id).query(Boolean.class).single();
+    }
+
     public long count() {
         return jdbc.sql("SELECT count(*) FROM book").query(Long.class).single();
     }
