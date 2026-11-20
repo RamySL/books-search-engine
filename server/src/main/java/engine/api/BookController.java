@@ -16,11 +16,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 /**
- * Livres par identifiant (cours 3, §2) : le catalogue, une collection, et la
+ * Livres par identifiant : le catalogue, une collection, et la
  * fiche d'un livre, un élément, avec ses voisins et ses extraits.
  * <p>
- * Les erreurs sont renvoyées au format Problem Details (RFC 9457), activé
- * dans application.yml : {@code {"status": 404, "detail": "...", ...}}.
  */
 @RestController
 @RequestMapping("/api/books")

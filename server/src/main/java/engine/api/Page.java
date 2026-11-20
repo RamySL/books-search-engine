@@ -3,7 +3,7 @@ package engine.api;
 import java.util.List;
 
 /**
- * Une page d'une liste trop longue pour être envoyée d'un coup (cours 3, §2).
+ * Une page d'une liste trop longue pour être envoyée d'un coup.
  *
  * @param count   nombre total d'éléments, toutes pages confondues
  * @param next    URL relative de la page suivante, ou null sur la dernière page

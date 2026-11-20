@@ -72,7 +72,7 @@ class IndexStep implements OfflineStep {
     public void run(ApplicationArguments args) {
         List<Integer> ids = books();
         long start = System.nanoTime();
-        InvertedIndex index = InvertedIndex.build(ids, this::text);
+        InvertedIndex index = InvertedIndex.build(ids, id -> text(corpus.booksDir(), id));
         log.info("Tables pondérées et inversion : {} livres, {} termes, {} lignes, en {} s",
                 ids.size(), index.termCount(), index.rowCount(), seconds(start));
         long load = System.nanoTime();
@@ -112,9 +112,10 @@ class IndexStep implements OfflineStep {
         return corpus.booksDir().resolve(id + ".txt");
     }
 
-    private String text(int id) {
+    /** @return le texte nettoyé du livre, dans le dossier des textes */
+    static String text(Path booksDir, int id) {
         try {
-            return Files.readString(file(id));
+            return Files.readString(booksDir.resolve(id + ".txt"));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

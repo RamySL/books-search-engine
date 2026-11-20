@@ -59,6 +59,7 @@ L'application répond sur http://localhost:8080. Le client est servi par nginx, 
 | `make build` | produit le jar exécutable `server/target/server-1.0.jar` |
 | `make run` | compile puis lance le serveur |
 | `make corpus`, `make index`, `make graph` | précalcul hors ligne, dans cet ordre : corpus, index inversé, graphe de Jaccard et centralités ; options de l'étape après `ARGS=` |
+| `make index-scaling`, `make graph-scaling` | mesures hors ligne selon la taille du corpus, pour le rapport |
 | `make test` | lance les tests JUnit des deux modules |
 | `make up`, `make down` | démarre ou arrête l'application complète dans Docker |
 | `make docker-corpus`, `make docker-index`, `make docker-graph` | précalcul hors ligne dans le conteneur du serveur ; options après `ARGS=` |
@@ -96,10 +97,11 @@ Calcule la distance de Jaccard entre tous les livres de l'index, puis le graphe 
 
 - **Distance** : d = 1 − Σ min / Σ max, sur les nombres d'occurrences de chaque mot dans les deux livres, les sommes portant sur l'union de leurs vocabulaires. Elle vaut 0 pour deux livres identiques, 1 s'ils n'ont aucun mot commun.
 - **`--theta=θ`** : le seuil, entre 0 exclu et 1 inclus (`make graph ARGS=--theta=0.6`). Sans cette option, l'étape prend le plus petit seuil au centième qui donne un degré moyen d'au moins 20.
-- **Histogramme des distances** : `measures/distances.csv`, une ligne par tranche de 0,01. `pairs` compte les paires de livres dont la distance tombe dans la tranche ; `edges` et `mean_degree` donnent le nombre d'arêtes et le degré moyen du graphe pour θ = `to`, de quoi choisir θ.
+- **Histogramme des distances** : `measures/distances.csv`, une ligne par tranche de 0,01. `pairs` compte les paires de livres dont la distance tombe dans la tranche ; `edges`, `mean_degree` et `isolated` donnent le nombre d'arêtes, le degré moyen et le nombre de livres sans voisin du graphe pour θ = `to`, de quoi choisir θ.
 - **Closeness** : l'inverse de la distance moyenne d'un livre aux autres, en nombre d'arêtes. Le graphe n'étant pas toujours connexe, elle suit la correction de Wasserman et Faust : ((r − 1)/(n − 1)) · ((r − 1)/Σ d), où r est le nombre de livres atteignables, le livre compris. Un livre isolé vaut 0.
 - **PageRank** : la part du temps qu'une marche aléatoire passe sur un livre. Elle suit une arête avec une probabilité proportionnelle à la similarité 1 − d, ou saute vers un livre quelconque avec la probabilité 0,15. Calcul par itération de la puissance, jusqu'à une variation inférieure à 10⁻¹² (200 itérations au plus).
-- **Centralités** : `measures/centralities.csv` (`id`, `title`, `degree`, `closeness`, `pagerank`).
+- **Centralités** : `measures/centralities.csv` (`id`, `title`, `word_count`, `degree`, `closeness`, `pagerank`).
+- **Arêtes** : `measures/edges.csv` (`book_a`, `book_b`, `distance`), une ligne par arête.
 - Le chargement tient en une transaction : interrompue, l'étape laisse l'ancien graphe en place. Changer θ ne demande pas de refaire l'index.
 - **Réglage**, par variable d'environnement : `MEASURES_DIR` (dossier `measures`).
 
@@ -123,6 +125,15 @@ Recherche par mot-clé : chaque mot de `q` doit figurer tel quel dans l'index du
 Les `suggestions` sont les voisins, dans le graphe de Jaccard, des 3 premiers résultats du tri choisi : au plus 10 livres, par distance croissante à l'un d'eux, sans ces 3 livres ni ceux de la page affichée.
 
 La connexion à la base se règle par les variables d'environnement `DB_URL`, `DB_USER` et `DB_PASSWORD`. Par défaut, elle vise le conteneur de `docker-compose.yml`.
+
+## Mesures hors ligne
+
+Deux étapes du jar, à lancer après `index` et `graph`, mesurent le passage à l'échelle selon le nombre de livres. Elles travaillent en mémoire et ne modifient pas la base. Les échantillons comptent 100, 250, 500, 1000, 1500 et 2000 livres ; ils sont tirés au hasard avec une graine fixe, chacun contient le précédent, et les deux étapes mesurent les mêmes livres. Option `--runs=N` : mesures par taille (3 par défaut), dont on garde la médiane.
+
+- `index-scaling` (`make index-scaling`) : construction de l'index inversé, dans `measures/index-scaling.csv` (`books`, `words`, `terms`, `rows`, `seconds`) ;
+- `graph-scaling` (`make graph-scaling`) : matrice de Jaccard, closeness et PageRank, au seuil de l'étape `graph`, dans `measures/graph-scaling.csv` (`books`, `pairs`, `jaccard_seconds`, `edges`, `isolated`, `closeness_seconds`, `pagerank_seconds`, `pagerank_iterations`).
+
+`python3 rapport/offline_charts.py measures rapport/figures` (avec matplotlib) produit ensuite les figures de la partie hors ligne, à partir de ces fichiers et de ceux de l'étape `graph`, et affiche les tableaux du rapport : classements par centralité, corrélations de rang, livres isolés selon leur taille, petites composantes connexes.
 
 ## Mesures en ligne
 

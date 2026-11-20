@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.OptionalDouble;
@@ -27,7 +26,7 @@ import java.util.stream.IntStream;
  * <ul>
  *   <li>Au dossier des mesures : l'histogramme des distances (distances.csv),
  *       écrit avant tout changement en base, puis les centralités
- *       (centralities.csv).</li>
+ *       (centralities.csv) et les arêtes (edges.csv).</li>
  *   <li>Option {@code --theta=θ} : le seuil. Sans elle, le plus petit seuil au
  *       centième qui donne un degré moyen d'au moins 20.</li>
  * </ul>
@@ -36,10 +35,7 @@ import java.util.stream.IntStream;
 class GraphStep implements OfflineStep {
 
     /** Degré moyen visé sans --theta : assez de voisins pour les suggestions, sans noyer le graphe. */
-    private static final int TARGET_MEAN_DEGREE = 20;
-
-    /** Lignes lues par aller-retour avec la base : l'index entier ne tient pas d'un bloc. */
-    private static final int FETCH_SIZE = 50_000;
+    static final int TARGET_MEAN_DEGREE = 20;
 
     private static final Logger log = LoggerFactory.getLogger(GraphStep.class);
 
@@ -53,10 +49,6 @@ class GraphStep implements OfflineStep {
         this.transaction = transaction;
     }
 
-    /** Les livres de l'index par numéro croissant, et leurs tables pondérées. */
-    private record Index(int[] ids, List<WeightedTable> tables) {
-    }
-
     @Override
     public String name() {
         return "graph";
@@ -66,10 +58,9 @@ class GraphStep implements OfflineStep {
     public void run(ApplicationArguments args) throws IOException {
         OptionalDouble option = theta(args);
         long start = System.nanoTime();
-        Index index = read();
+        ForwardIndex index = ForwardIndex.read(jdbc, transaction);
         int n = index.ids().length;
-        long rows = index.tables().stream().mapToLong(table -> table.terms().length).sum();
-        log.info("Index direct : {} livres, {} lignes, lus en {} s", n, rows, seconds(start));
+        log.info("Index direct : {} livres, {} lignes, lus en {} s", n, index.rows(), seconds(start));
 
         start = System.nanoTime();
         double[][] matrix = Jaccard.matrix(index.tables());
@@ -104,6 +95,9 @@ class GraphStep implements OfflineStep {
         Path centralities = measures.dir().resolve("centralities.csv");
         Files.write(centralities, centralities());
         log.info("Centralités écrites dans {}", centralities);
+        Path edges = measures.dir().resolve("edges.csv");
+        Files.write(edges, edges());
+        log.info("Arêtes écrites dans {}", edges);
     }
 
     /** --theta=θ, entre 0 exclu et 1 inclus. */
@@ -122,44 +116,6 @@ class GraphStep implements OfflineStep {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("--theta attend un seuil entre 0 exclu et 1 inclus : " + value);
         }
-    }
-
-    /**
-     * L'index direct, en deux passes sur occurrence : la taille de chaque
-     * table, puis son contenu. La seconde suit la clé primaire (terme, livre) :
-     * les termes de chaque livre arrivent par numéro croissant, sans tri.
-     */
-    private Index read() {
-        return transaction.execute(status -> {
-            List<int[]> sizes = jdbc.sql("SELECT book_id, count(*) FROM occurrence GROUP BY book_id ORDER BY book_id")
-                    .query((rs, row) -> new int[] {rs.getInt(1), rs.getInt(2)})
-                    .list();
-            if (sizes.isEmpty()) {
-                throw new IllegalStateException("Index vide : lancer d'abord l'étape index");
-            }
-            int n = sizes.size();
-            int[] ids = new int[n];
-            int[][] terms = new int[n][];
-            int[][] frequencies = new int[n][];
-            for (int b = 0; b < n; b++) {
-                ids[b] = sizes.get(b)[0];
-                terms[b] = new int[sizes.get(b)[1]];
-                frequencies[b] = new int[sizes.get(b)[1]];
-            }
-            int[] filled = new int[n];
-            // dans une transaction, le pilote lit par paquets de FETCH_SIZE lignes
-            jdbc.sql("SELECT term_id, book_id, frequency FROM occurrence ORDER BY term_id, book_id")
-                    .withFetchSize(FETCH_SIZE)
-                    .query(rs -> {
-                        int b = Arrays.binarySearch(ids, rs.getInt(2));
-                        terms[b][filled[b]] = rs.getInt(1);
-                        frequencies[b][filled[b]++] = rs.getInt(3);
-                    });
-            List<WeightedTable> tables = IntStream.range(0, n)
-                    .mapToObj(b -> new WeightedTable(terms[b], frequencies[b]))
-                    .toList();
-            return new Index(ids, tables);
-        });
     }
 
     /**
@@ -204,13 +160,27 @@ class GraphStep implements OfflineStep {
         });
     }
 
-    /** Les centralités telles qu'en base, au format CSV, par numéro de livre. */
+    /**
+     * Les centralités telles qu'en base, au format CSV, par numéro de livre,
+     * avec la taille du livre : les livres isolés sont surtout des livres courts.
+     */
     private List<String> centralities() {
-        List<String> lines = new ArrayList<>(List.of("id,title,degree,closeness,pagerank"));
-        jdbc.sql("SELECT id, title, degree, closeness, pagerank FROM book ORDER BY id")
+        List<String> lines = new ArrayList<>(List.of("id,title,word_count,degree,closeness,pagerank"));
+        jdbc.sql("SELECT id, title, word_count, degree, closeness, pagerank FROM book ORDER BY id")
                 .query(rs -> {
-                    lines.add(rs.getInt("id") + "," + quote(rs.getString("title")) + "," + rs.getInt("degree")
-                            + "," + decimal(rs.getDouble("closeness")) + "," + decimal(rs.getDouble("pagerank")));
+                    lines.add(rs.getInt("id") + "," + quote(rs.getString("title")) + "," + rs.getInt("word_count")
+                            + "," + rs.getInt("degree") + "," + decimal(rs.getDouble("closeness"))
+                            + "," + decimal(rs.getDouble("pagerank")));
+                });
+        return lines;
+    }
+
+    /** Les arêtes telles qu'en base, une ligne par arête (book_a &lt; book_b), pour l'étude du graphe. */
+    private List<String> edges() {
+        List<String> lines = new ArrayList<>(List.of("book_a,book_b,distance"));
+        jdbc.sql("SELECT book_a, book_b, distance FROM neighbor WHERE book_a < book_b ORDER BY book_a, book_b")
+                .query(rs -> {
+                    lines.add(rs.getInt(1) + "," + rs.getInt(2) + "," + decimal(rs.getDouble(3)));
                 });
         return lines;
     }

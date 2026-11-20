@@ -123,8 +123,8 @@ class GraphStepTest {
 
         List<String> lines = Files.readAllLines(measures.resolve("distances.csv"));
         assertEquals(1 + DistanceDistribution.STEPS, lines.size());
-        assertEquals("0.77,0.78,2,2,1.33", lines.get(78));
-        assertEquals("0.99,1.00,1,2,1.33", lines.getLast());
+        assertEquals("0.77,0.78,2,2,1.33,0", lines.get(78));
+        assertEquals("0.99,1.00,1,2,1.33,0", lines.getLast());
     }
 
     @Test
@@ -133,9 +133,21 @@ class GraphStepTest {
 
         List<String> lines = Files.readAllLines(measures.resolve("centralities.csv"));
         assertEquals(4, lines.size());
-        assertEquals("id,title,degree,closeness,pagerank", lines.getFirst());
-        assertTrue(lines.get(1).startsWith("1,\"D1 : Sargon of Akkad\",1,0.6666666666666666,0.25675675675"));
-        assertTrue(lines.get(3).startsWith("3,\"D3 : Akkad and Babylon\",2,1.0,0.48648648648"));
+        assertEquals("id,title,word_count,degree,closeness,pagerank", lines.getFirst());
+        assertTrue(lines.get(1).startsWith("1,\"D1 : Sargon of Akkad\",11,1,0.6666666666666666,0.25675675675"));
+        assertTrue(lines.get(3).startsWith("3,\"D3 : Akkad and Babylon\",9,2,1.0,0.48648648648"));
+    }
+
+    @Test
+    void writesEachEdgeOnce() throws IOException {
+        graph("--theta=0.8");
+
+        // le chemin D1 - D3 - D2, à 7/9 : une ligne par arête, alors que neighbor en a deux
+        List<String> lines = Files.readAllLines(measures.resolve("edges.csv"));
+        assertEquals(3, lines.size());
+        assertEquals("book_a,book_b,distance", lines.getFirst());
+        assertTrue(lines.get(1).startsWith("1,3,0.7777777"));
+        assertTrue(lines.get(2).startsWith("2,3,0.7777777"));
     }
 
     @Test

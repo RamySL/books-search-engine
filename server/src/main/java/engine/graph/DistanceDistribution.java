@@ -6,9 +6,10 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Distances de toutes les paires de livres, triées. Elles donnent, pour tout
- * seuil θ, le nombre d'arêtes du graphe de seuil : de quoi choisir θ et tracer
- * l'histogramme des distances.
+ * Distances de toutes les paires de livres, triées, et distance de chaque
+ * livre à son plus proche voisin, triée elle aussi. Elles donnent, pour tout
+ * seuil θ, le nombre d'arêtes et de livres isolés du graphe de seuil : de quoi
+ * choisir θ et tracer l'histogramme des distances.
  */
 final class DistanceDistribution {
 
@@ -16,35 +17,51 @@ final class DistanceDistribution {
     static final int STEPS = 100;
 
     private final double[] sorted;
-    private final int books;
 
-    private DistanceDistribution(double[] sorted, int books) {
+    /** Distance de chaque livre au plus proche autre livre ; +∞ pour un livre seul. */
+    private final double[] nearest;
+
+    private DistanceDistribution(double[] sorted, double[] nearest) {
         this.sorted = sorted;
-        this.books = books;
+        this.nearest = nearest;
     }
 
     /** @param matrix matrice des distances entre les livres */
     static DistanceDistribution of(double[][] matrix) {
         int n = matrix.length;
         double[] pairs = new double[Math.toIntExact((long) n * (n - 1) / 2)];
+        double[] nearest = new double[n];
+        Arrays.fill(nearest, Double.POSITIVE_INFINITY);
         int p = 0;
         for (int i = 0; i < n; i++) {
             for (int j = i + 1; j < n; j++) {
                 pairs[p++] = matrix[i][j];
+                nearest[i] = Math.min(nearest[i], matrix[i][j]);
+                nearest[j] = Math.min(nearest[j], matrix[i][j]);
             }
         }
         Arrays.parallelSort(pairs);
-        return new DistanceDistribution(pairs, n);
+        Arrays.sort(nearest);
+        return new DistanceDistribution(pairs, nearest);
     }
 
     /** @return le nombre de paires à distance strictement inférieure à θ : les arêtes du graphe de seuil */
     long edges(double theta) {
-        // recherche dichotomique de la première distance qui atteint θ
+        return below(sorted, theta);
+    }
+
+    /** @return le nombre de livres sans voisin dans le graphe de seuil : leur plus proche voisin est à θ ou plus */
+    int isolated(double theta) {
+        return nearest.length - below(nearest, theta);
+    }
+
+    /** Recherche dichotomique de la première valeur qui atteint θ, dans un tableau trié. */
+    private static int below(double[] values, double theta) {
         int low = 0;
-        int high = sorted.length;
+        int high = values.length;
         while (low < high) {
             int middle = (low + high) >>> 1;
-            if (sorted[middle] < theta) {
+            if (values[middle] < theta) {
                 low = middle + 1;
             } else {
                 high = middle;
@@ -55,7 +72,7 @@ final class DistanceDistribution {
 
     /** @return le degré moyen 2m/n du graphe de seuil θ */
     double meanDegree(double theta) {
-        return 2.0 * edges(theta) / books;
+        return 2.0 * edges(theta) / nearest.length;
     }
 
     /** @return le plus petit seuil au centième qui atteint ce degré moyen ; 1 si aucun ne l'atteint */
@@ -72,18 +89,18 @@ final class DistanceDistribution {
     /**
      * Histogramme au format CSV, une ligne par tranche [from, to) de largeur
      * 1/100 ; la dernière est fermée, pour compter aussi les paires sans mot
-     * commun (d = 1). Les colonnes edges et mean_degree décrivent le graphe
-     * de seuil θ = to.
+     * commun (d = 1). Les colonnes edges, mean_degree et isolated décrivent le
+     * graphe de seuil θ = to.
      */
     List<String> histogram() {
-        List<String> lines = new ArrayList<>(List.of("from,to,pairs,edges,mean_degree"));
+        List<String> lines = new ArrayList<>(List.of("from,to,pairs,edges,mean_degree,isolated"));
         long previous = 0;
         for (int k = 1; k <= STEPS; k++) {
             double to = (double) k / STEPS;
             long edges = edges(to);
             long upTo = k == STEPS ? sorted.length : edges;
-            lines.add(String.format(Locale.ROOT, "%.2f,%.2f,%d,%d,%.2f",
-                    (k - 1.0) / STEPS, to, upTo - previous, edges, 2.0 * edges / books));
+            lines.add(String.format(Locale.ROOT, "%.2f,%.2f,%d,%d,%.2f,%d",
+                    (k - 1.0) / STEPS, to, upTo - previous, edges, meanDegree(to), isolated(to)));
             previous = upTo;
         }
         return lines;

@@ -6,7 +6,7 @@
 JAR := server/target/server-1.0.jar
 STATIC := server/src/main/resources/static
 
-.PHONY: all db client build run corpus index graph test clean up down docker-corpus docker-index docker-graph
+.PHONY: all db client build run corpus index graph index-scaling graph-scaling test clean up down docker-corpus docker-index docker-graph
 
 all: build
 
@@ -29,7 +29,9 @@ run: build
 
 # Précalcul hors ligne, dans cet ordre : corpus, index inversé, graphe de
 # Jaccard et centralités. Options de l'étape : make corpus ARGS=--limit=50
-corpus index graph: build
+# Mesures hors ligne selon la taille du corpus, après index et graph :
+# make index-scaling, make graph-scaling (ARGS=--runs=N)
+corpus index graph index-scaling graph-scaling: build
 	java -jar $(JAR) $@ $(ARGS)
 
 test:
