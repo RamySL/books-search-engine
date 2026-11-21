@@ -1,15 +1,19 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { book, excerpts, neighbors, type Book, type Excerpt, type Neighbor } from './api.ts'
-import { BookCard, Cover, Highlighted } from './components.tsx'
-import { formatCloseness, formatPagerank, useApi } from './useApi.ts'
+import { book, excerpts, neighbors } from '../api/client.ts'
+import type { Book, Excerpt, Neighbor } from '../api/types.ts'
+import { BookCard } from '../components/BookCard.tsx'
+import { Cover } from '../components/Cover.tsx'
+import { Highlighted } from '../components/Highlighted.tsx'
+import { useApi } from '../hooks/useApi.ts'
+import { formatCloseness, formatPagerank } from '../utils/format.ts'
 
 /**
  * Vue Livre : /books/:id?hl=&words=. Métadonnées et centralités, extraits où la
  * dernière RegEx (paramètre hl) est surlignée, voisins dans le graphe de
  * Jaccard.
  */
-function BookView() {
+function BookPage() {
   const id = Number(useParams().id)
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
@@ -47,7 +51,8 @@ function BookView() {
           <p className="author">{b.author ?? 'Auteur inconnu'}</p>
           <dl className="facts">
             <dt>Numéro Gutenberg</dt>
-            <dd><a href={`https://www.gutenberg.org/ebooks/${b.id}`} target="_blank" rel="noreferrer">{b.id}</a></dd>
+            {/* version HTML du livre sur le miroir pglaf, comme les couvertures */}
+            <dd><a href={`https://gutenberg.pglaf.org/cache/epub/${b.id}/pg${b.id}-images.html`} target="_blank" rel="noreferrer">{b.id}</a></dd>
             <dt>Langue</dt><dd>{b.language}</dd>
             <dt>Mots</dt><dd>{b.wordCount.toLocaleString('fr-FR')}</dd>
             <dt>Voisins (degré)</dt><dd>{b.degree}</dd>
@@ -95,4 +100,4 @@ function BookView() {
   )
 }
 
-export default BookView
+export default BookPage

@@ -27,3 +27,12 @@ data/
 server/src/main/resources/static/
 
 docs/
+
+# Fichiers intermédiaires de LaTeX (seul rapport/rapport.pdf est versionné)
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz

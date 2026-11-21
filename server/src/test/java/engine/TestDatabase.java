@@ -7,7 +7,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
  * Base des tests : un PostgreSQL jetable, démarré dans Docker par
- * Testcontainers, sur lequel Flyway applique les migrations. Les tests ne
+ * Testcontainers, sur lequel Spring crée le schéma (schema.sql). Les tests ne
  * touchent donc jamais la base de {@code make db} et son corpus. Docker doit
  * tourner pendant {@code make test}.
  * <p>

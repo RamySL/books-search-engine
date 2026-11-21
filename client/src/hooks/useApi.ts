@@ -34,12 +34,3 @@ export function useApi<T>(key: string | null, load: () => Promise<T>): Loaded<T>
   const loading = state.key !== key
   return { data: state.data, error: loading ? null : state.error, loading }
 }
-
-export function formatCloseness(value: number): string {
-  return value.toFixed(3)
-}
-
-/** Le PageRank d'un livre vaut environ 1/n : on l'affiche multiplié par 1000 (‰). */
-export function formatPagerank(value: number): string {
-  return `${(value * 1000).toFixed(3)} ‰`
-}

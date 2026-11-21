@@ -1,2 +1,6 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+
+# archive du rendu (git archive) : du dossier rapport/, seul le PDF compilé
+rapport/** export-ignore
+rapport/rapport.pdf -export-ignore

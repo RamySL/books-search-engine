@@ -1,10 +1,11 @@
--- Schéma de la base du moteur de recherche. Les tables sont remplies hors
--- ligne par les modes de précalcul du serveur (corpus, index, graph) ; l'API
--- ne fait que les lire.
+-- Schéma de la base du moteur de recherche, appliqué par Spring à chaque
+-- démarrage : les tables ne sont créées que si elles n'existent pas. Elles sont
+-- remplies hors ligne par les modes de précalcul du serveur (corpus, index,
+-- graph) ; l'API ne fait que les lire.
 
 -- Livres du corpus. Le degré et les centralités valent 0 tant que le graphe
 -- de Jaccard n'a pas été calculé.
-CREATE TABLE book (
+CREATE TABLE IF NOT EXISTS book (
     id         integer PRIMARY KEY,               -- numéro du livre dans le projet Gutenberg
     title      text NOT NULL,
     author     text,                              -- null si l'auteur est inconnu
@@ -16,7 +17,7 @@ CREATE TABLE book (
 );
 
 -- Vocabulaire du corpus, numéroté par l'indexation.
-CREATE TABLE term (
+CREATE TABLE IF NOT EXISTS term (
     id         integer PRIMARY KEY,
     word       text NOT NULL UNIQUE,
     book_count integer NOT NULL                   -- nombre de livres qui contiennent le mot
@@ -26,7 +27,7 @@ CREATE TABLE term (
 -- avec son nombre d'occurrences. Rangée par terme, dans l'ordre de la clé
 -- primaire, c'est l'index inversé (mot -> livres) ; parcourue par livre, c'est
 -- l'index direct (livre -> mots), d'où part le calcul des distances.
-CREATE TABLE occurrence (
+CREATE TABLE IF NOT EXISTS occurrence (
     term_id   integer NOT NULL REFERENCES term,
     book_id   integer NOT NULL REFERENCES book,
     frequency integer NOT NULL,                   -- nombre d'occurrences du mot dans le livre
@@ -36,7 +37,7 @@ CREATE TABLE occurrence (
 -- Arêtes du graphe de Jaccard : deux livres sont voisins si leur distance est
 -- inférieure au seuil choisi. Chaque arête est rangée dans les deux sens, pour
 -- lire les voisins d'un livre par la clé primaire.
-CREATE TABLE neighbor (
+CREATE TABLE IF NOT EXISTS neighbor (
     book_a   integer NOT NULL REFERENCES book,
     book_b   integer NOT NULL REFERENCES book,
     distance double precision NOT NULL,           -- distance de Jaccard pondérée, entre 0 et 1

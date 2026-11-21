@@ -1,4 +1,4 @@
--- Jeu d'essai : la mini-bibliothèque du cours 3 (§5.3), pour les tests et
+-- Jeu d'essai : une mini-bibliothèque de trois documents, pour les tests et
 -- pour développer l'API en attendant le vrai corpus.
 --
 --   D1 = Sargon of Akkad founded an empire. The empire of Sargon fell.
@@ -55,7 +55,7 @@ INSERT INTO occurrence (term_id, book_id, frequency) VALUES
     (2, 2, 2), (3, 2, 1), (7, 2, 2), (8, 2, 1), (10, 2, 1),    -- D2
     (1, 3, 1), (2, 3, 1), (3, 3, 1), (4, 3, 1);                -- D3
 
--- Chaque arête est rangée dans les deux sens (voir V1__schema.sql).
+-- Chaque arête est rangée dans les deux sens (voir schema.sql).
 INSERT INTO neighbor (book_a, book_b, distance) VALUES
     (1, 3, 7.0 / 9), (3, 1, 7.0 / 9),
     (2, 3, 7.0 / 9), (3, 2, 7.0 / 9);

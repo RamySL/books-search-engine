@@ -7,6 +7,10 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/engine}
     username: ${DB_USER:engine}
     password: ${DB_PASSWORD:engine}
+  # schéma de la base (schema.sql), appliqué à chaque démarrage, même hors base embarquée
+  sql:
+    init:
+      mode: always
   mvc:
     # erreurs de l'API en JSON au format Problem Details (RFC 9457)
     problemdetails:

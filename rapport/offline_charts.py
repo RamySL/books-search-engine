@@ -9,7 +9,6 @@ taille, petites composantes) sont affichés dans le terminal. Un CSV absent est
 ignoré : les figures qui en dépendent ne sont pas produites.
 """
 
-import math
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -23,16 +22,6 @@ GREEN = "#1baf7a"
 GREY = "#a8a6a0"
 
 
-def fit_power(xs, ys):
-    """Ajustement y = k · x^b par moindres carrés sur les logarithmes."""
-    lx = [math.log(x) for x in xs]
-    ly = [math.log(y) for y in ys]
-    n = len(xs)
-    mx, my = sum(lx) / n, sum(ly) / n
-    b = sum((a - mx) * (c - my) for a, c in zip(lx, ly)) / sum((a - mx) ** 2 for a in lx)
-    return math.exp(my - b * mx), b
-
-
 def fit_square(ns, ts):
     """Ajustement t = a · n² par moindres carrés, sans terme constant."""
     a = sum(t * n * n for n, t in zip(ns, ts)) / sum(n ** 4 for n in ns)
@@ -40,25 +29,22 @@ def fit_square(ns, ts):
 
 
 def index_scaling(measures, figures):
-    """Vocabulaire (loi de Heaps), lignes de l'index et temps de construction selon la taille."""
+    """Vocabulaire, lignes de l'index et temps de construction selon la taille."""
     rows = read_csv(measures / "index-scaling.csv")
     if not rows:
         return
     books = [int(r["books"]) for r in rows]
-    words = [int(r["words"]) for r in rows]
     terms = [int(r["terms"]) for r in rows]
     lines = [int(r["rows"]) for r in rows]
     seconds = [float(r["seconds"]) for r in rows]
-    k, beta = fit_power(words, terms)
 
-    fig, (heaps, size, time) = plt.subplots(1, 3, figsize=(7.2, 2.4))
-    heaps.loglog([w / 1e6 for w in words], terms, "o", color=KMP, label="mesure")
-    heaps.loglog([w / 1e6 for w in words], [k * w ** beta for w in words], "--", color=ENCRE_2,
-                 linewidth=1, label=f"$k\\,N^{{{beta:.2f}}}$")
-    heaps.set_xlabel("mots des textes (millions)")
-    heaps.set_ylabel("termes distincts")
-    heaps.set_title("Vocabulaire")
-    heaps.legend()
+    fig, (vocabulary, size, time) = plt.subplots(1, 3, figsize=(7.2, 2.4))
+    vocabulary.plot(books, [t / 1000 for t in terms], "o-", color=KMP)
+    vocabulary.set_xlabel("livres")
+    vocabulary.set_ylabel("termes distincts (milliers)")
+    vocabulary.set_title("Vocabulaire")
+    vocabulary.set_xlim(left=0)
+    vocabulary.set_ylim(bottom=0)
 
     size.plot(books, [r / 1e6 for r in lines], "o-", color=GREEN)
     size.set_xlabel("livres")
@@ -75,7 +61,6 @@ def index_scaling(measures, figures):
     time.set_ylim(bottom=0)
     fig.tight_layout()
     save(fig, figures, "index-scaling")
-    print(f"Loi de Heaps : V = {k:.1f} · N^{beta:.3f}")
 
 
 def graph_scaling(measures, figures):

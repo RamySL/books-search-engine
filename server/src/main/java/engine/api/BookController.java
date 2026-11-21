@@ -18,7 +18,6 @@ import java.util.List;
 /**
  * Livres par identifiant : le catalogue, une collection, et la
  * fiche d'un livre, un élément, avec ses voisins et ses extraits.
- * <p>
  */
 @RestController
 @RequestMapping("/api/books")

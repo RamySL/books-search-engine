@@ -19,8 +19,8 @@ import java.util.stream.Collectors;
  *   <li>sans argument, le serveur web : l'API REST sous /api et le client
  *       compilé (resources/static) ;</li>
  *   <li>avec le nom d'une {@link OfflineStep} en premier argument, Spring sans
- *       serveur web : la base est migrée, l'étape tourne, puis le programme
- *       s'arrête.</li>
+ *       serveur web : le schéma est créé s'il n'existe pas, l'étape tourne,
+ *       puis le programme s'arrête.</li>
  * </ul>
  */
 @SpringBootApplication

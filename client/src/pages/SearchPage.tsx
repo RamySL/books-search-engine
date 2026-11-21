@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
-import { books, search, searchRegex, type BookSummary, type Page, type SearchResponse, type Sort } from './api.ts'
-import { BookCard, type Highlight } from './components.tsx'
-import { useApi, type Loaded } from './useApi.ts'
+import { books, search, searchRegex } from '../api/client.ts'
+import type { BookSummary, Page, SearchResponse, Sort } from '../api/types.ts'
+import { BookCard, type Highlight } from '../components/BookCard.tsx'
+import { Pager } from '../components/Pager.tsx'
+import { useApi, type Loaded } from '../hooks/useApi.ts'
 
 /** Mode de recherche : mot-clé, RegEx sur l'index, RegEx sur le texte intégral. */
 type Mode = 'keyword' | 'index' | 'text'
@@ -19,12 +21,9 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: 'pagerank', label: 'PageRank' },
 ]
 
-const PAGE_SIZE = 20
-
 function parseMode(value: string | null): Mode {
   return value === 'index' || value === 'text' ? value : 'keyword'
 }
-
 
 function parseSort(value: string | null): Sort {
   return value === 'closeness' || value === 'pagerank' ? value : 'occurrences'
@@ -35,7 +34,7 @@ function parseSort(value: string | null): Sort {
  * ce qui permet de partager une recherche et d'utiliser le bouton Retour.
  * Sans requête, on affiche le catalogue.
  */
-function SearchView() {
+function SearchPage() {
   const [params, setParams] = useSearchParams()
   const q = params.get('q')?.trim() ?? ''
   const mode = parseMode(params.get('mode'))
@@ -199,16 +198,4 @@ function Catalog({ catalog, page, onPage }: {
   )
 }
 
-function Pager({ page, count, onPage }: { page: number; count: number; onPage: (page: number) => void }) {
-  const pages = Math.ceil(count / PAGE_SIZE)
-  if (pages <= 1) return null
-  return (
-    <nav className="pager">
-      <button type="button" disabled={page <= 1} onClick={() => onPage(page - 1)}>← Précédente</button>
-      <span>Page {page} / {pages}</span>
-      <button type="button" disabled={page >= pages} onClick={() => onPage(page + 1)}>Suivante →</button>
-    </nav>
-  )
-}
-
-export default SearchView
+export default SearchPage

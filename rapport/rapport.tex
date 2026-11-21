@@ -10,7 +10,12 @@
 \usepackage{booktabs}
 \usepackage{caption}
 \usepackage{tikz}
-\usetikzlibrary{positioning,arrows.meta,fit,calc}
+% babel : avec la langue française, « ! » et « ; » deviennent actifs ; cette
+% bibliothèque permet à TikZ de les lire, comme dans $(a)!0.5!(b)$
+\usetikzlibrary{positioning,arrows.meta,fit,calc,babel}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{placeins}
 \usepackage[hidelinks]{hyperref}
 
 \hypersetup{
@@ -32,13 +37,12 @@
 \begin{document}
 \maketitle
 
-% Introduction et architecture : rédigées à deux (brouillon de Younes, à relire par Ramy).
 \section{Introduction}
 \label{sec:intro}
 
 Le sujet demande une application web et mobile de recherche dans une
 bibliothèque d'au moins 1664 livres de 10\,000 mots ou plus. Nous avons retenu
-2002 livres anglais du projet Gutenberg (liste versionnée dans
+2000 livres anglais du projet Gutenberg (liste versionnée dans
 \texttt{corpus/ids.txt}). L'application offre les quatre fonctionnalités
 exigées :
 \begin{itemize}
@@ -51,22 +55,14 @@ exigées :
         meilleurs résultats dans le graphe de Jaccard.
 \end{itemize}
 Les expressions régulières sont traitées par notre clone d'\texttt{egrep} du
-projet~1 (automate d'Aho-Ullman, déterminisation, minimisation de Moore, KMP),
+projet~1~\cite{projet1} (automate d'Aho-Ullman, déterminisation, minimisation de Moore, KMP),
 réutilisé tel quel comme bibliothèque.
-
-\paragraph{Répartition.} Ramy Sail a écrit la chaîne hors ligne (corpus, index
-inversé, graphe de Jaccard, centralités), Younes Bensallah la partie en ligne
-(recherches, classement, recommandations, API, client) et la dockerisation. La
-frontière entre les deux est le schéma SQL : la chaîne hors ligne écrit les
-tables, la partie en ligne ne fait que les lire. Nous avons utilisé des
-assistants d'IA générative pour relire du code, rédiger des tests et mettre en
-forme ce rapport ; les choix et les résultats ont été vérifiés par nous.
 
 \section{Architecture}
 \label{sec:archi}
 
-L'application suit le modèle client-serveur à trois couches du cours~3
-(figure~\ref{fig:archi}). Le \emph{client} est une application React servie en
+L'application suit le modèle client-serveur à trois couches du
+cours (figure~\ref{fig:archi}). Le \emph{client} est une application React servie en
 fichiers statiques ; il ne parle qu'à l'API REST du \emph{serveur} Spring Boot
 (Java~21), qui lit une base \emph{PostgreSQL}. Le calcul coûteux est fait
 \emph{hors ligne}, par le même jar lancé avec le nom d'une étape
@@ -101,19 +97,32 @@ intégral, qui relit les livres.
 \label{fig:archi}
 \end{figure}
 
+\paragraph{Déploiement.} \texttt{docker compose up} lance trois conteneurs :
+PostgreSQL~18, le serveur et nginx, qui sert le client compilé et transmet
+\texttt{/api} au serveur. Deux réseaux séparent les couches : \texttt{front}
+relie nginx au serveur, \texttt{back} le serveur à la base, que le client
+n'atteint donc jamais. Deux volumes gardent les données, l'un pour la base,
+l'autre pour les textes des livres, et les étapes hors ligne se lancent dans le
+conteneur du serveur (\texttt{docker compose run -{}-rm server index}). Sans
+Docker, \texttt{make run} lance le même jar, qui sert aussi le client compilé.
+
 \input{hors-ligne}
 \input{en-ligne}
-\input{pertinence}
 
-% Conclusion : rédigée à deux (brouillon de Younes, à compléter par Ramy).
+% les figures de la partie en ligne restent avant la conclusion
+\FloatBarrier
+
 \section{Conclusion et perspectives}
 \label{sec:conclusion}
 
-Le moteur répond aux quatre fonctionnalités du sujet sur 2002 livres, et
+Le moteur répond aux quatre fonctionnalités du sujet sur 2000 livres, et
 fonctionne depuis un téléphone sur le réseau local. Le précalcul hors ligne
-(index inversé, graphe de Jaccard, centralités) rend la recherche par mot-clé
-et la RegEx sur l'index quasi instantanées ; seule la RegEx sur le texte
-intégral reste coûteuse, linéaire en la taille du corpus, comme prévu.
+(index inversé de 13~millions de lignes en 37~s, graphe de Jaccard et
+centralités en 40~s) rend la recherche par mot-clé et la RegEx sur l'index
+quasi instantanées, en quelques millisecondes ; seule la RegEx sur le texte
+intégral reste coûteuse, 2 à 3~s, linéaire en la taille du corpus, comme prévu.
+Le graphe de seuil retrouve des genres (romans, théâtre, poésie), mais laisse
+30~\% des livres isolés, surtout des livres courts.
 
 \paragraph{Perspectives.} Plusieurs améliorations classiques des moteurs de
 recherche textuels s'appliqueraient directement :
@@ -125,43 +134,61 @@ recherche textuels s'appliqueraient directement :
   \item un \textbf{index de trigrammes}~\cite{trigram} pour la RegEx sur le texte :
         seuls les livres qui contiennent les trigrammes imposés par la RegEx
         seraient relus ;
+  \item un \textbf{graphe des $k$ plus proches voisins} en complément du graphe
+        de seuil, pour que les livres isolés aient eux aussi des voisins et des
+        suggestions (section~\ref{sec:graphe}) ;
   \item des \textbf{recommandations collaboratives} (les livres les plus consultés
         après une recherche semblable), à combiner avec le graphe de Jaccard ;
   \item le passage à l'échelle de Gutenberg entier (plus de 70\,000 livres) :
-        le calcul de Jaccard en $O(n^2)$ deviendrait le goulot, et il faudrait une
-        approximation (MinHash, LSH).
+        le calcul de Jaccard en $O(n^2)$ deviendrait le goulot (environ 9~heures,
+        section~\ref{sec:jaccard}), et il faudrait une approximation (MinHash,
+        LSH~\cite{mmds}).
 \end{itemize}
+
+\section*{Utilisation de l'IA}
+Nous avons utilisé des assistants d'IA générative pour nos recherches
+bibliographiques sur l'état de l'art, pour nous assurer que nos tests sont
+aussi complets que possible, pour générer les scripts qui produisent les
+figures du rapport et pour la mise en forme du rapport en \LaTeX.
 
 \begin{thebibliography}{99}
 \small
-\bibitem{ahoullman} A.~V. Aho, J.~D. Ullman. \emph{Foundations of Computer
-  Science}, chapitre~10. Computer Science Press, 1992.
 \bibitem{bm25} S.~Robertson, H.~Zaragoza. The probabilistic relevance framework:
   BM25 and beyond. \emph{Foundations and Trends in Information Retrieval}, 3(4), 2009.
-\bibitem{boyermoore} R.~S. Boyer, J.~S. Moore. A fast string searching
-  algorithm. \emph{Communications of the ACM}, 20(10), p.~762--772, 1977.
+\bibitem{brandes} U.~Brandes. A faster algorithm for betweenness centrality.
+  \emph{Journal of Mathematical Sociology}, 25(2), p.~163--177, 2001.
+\bibitem{brin} S.~Brin, L.~Page. The anatomy of a large-scale hypertextual Web
+  search engine. \emph{Computer Networks and ISDN Systems}, 30(1--7),
+  p.~107--117, 1998.
+\bibitem{broder} A.~Z. Broder. On the resemblance and containment of documents.
+  \emph{Compression and Complexity of Sequences}, IEEE, p.~21--29, 1997.
 \bibitem{trigram} R.~Cox. Regular expression matching with a trigram index.
   \url{https://swtch.com/~rsc/regexp/regexp4.html}, 2012.
-\bibitem{fielding} R.~T. Fielding. \emph{Architectural Styles and the Design of
-  Network-based Software Architectures}, chapitre~5 (REST). Thèse, University of
-  California, Irvine, 2000.
-\bibitem{hopcroft} J.~E. Hopcroft. An $n \log n$ algorithm for minimizing states
-  in a finite automaton. \emph{Theory of Machines and Computations}, Academic
-  Press, 1971.
+\bibitem{gutenberg} Project Gutenberg. Catalogue et textes :
+  \url{https://www.gutenberg.org}, miroir \url{https://gutenberg.pglaf.org},
+  consultés en novembre 2026.
 \bibitem{iir} C.~D. Manning, P.~Raghavan, H.~Schütze. \emph{Introduction to
-  Information Retrieval}, chapitres~1, 2 et~5. Cambridge University Press, 2008.
+  Information Retrieval}, chapitres~1, 2, 4, 5 et~21. Cambridge University Press, 2008.
+\bibitem{jaccard} P.~Jaccard. Étude comparative de la distribution florale dans
+  une portion des Alpes et du Jura. \emph{Bulletin de la Société vaudoise des
+  sciences naturelles}, 37, p.~547--579, 1901.
 \bibitem{kmp} D.~E. Knuth, J.~H. Morris, V.~R. Pratt. Fast pattern matching in
   strings. \emph{SIAM Journal on Computing}, 6(2), p.~323--350, 1977.
+\bibitem{mmds} J.~Leskovec, A.~Rajaraman, J.~D. Ullman. \emph{Mining of Massive
+  Datasets}, 2\textsuperscript{e} édition, chapitre~3. Cambridge University
+  Press, 2014.
 \bibitem{lucene} M.~McCandless. Lucene's RegexpQuery and FuzzyQuery: intersecting
   an automaton with the terms dictionary. \url{https://blog.mikemccandless.com/2011/03/lucenes-fuzzyquery-is-100-times-faster.html}, 2011.
-\bibitem{moore} E.~F. Moore. Gedanken-experiments on sequential machines.
-  \emph{Automata Studies}, Princeton University Press, 1956.
 \bibitem{rfc9457} M.~Nottingham, E.~Wilde, S.~Dalal. Problem Details for HTTP
   APIs. RFC~9457, IETF, 2023.
-\bibitem{recsys} F.~Ricci, L.~Rokach, B.~Shapira (dir.). \emph{Recommender
-  Systems Handbook}, chapitres~1 à~3. Springer, 2015.
-\bibitem{thompson} K.~Thompson. Regular expression search algorithm.
-  \emph{Communications of the ACM}, 11(6), p.~419--422, 1968.
+\bibitem{snowball} M.~F. Porter. Snowball: a language for stemming
+  algorithms, 2001. Liste anglaise de mots vides :
+  \url{https://snowballstem.org/algorithms/english/stop.txt}.
+\bibitem{projet1} R.~Sail, Y.~Bensallah. Clone d'\texttt{egrep} : automates
+  d'Aho-Ullman et KMP. Projet~1 de DAAR, Sorbonne Université, 2026 (module
+  \texttt{egrep/} de l'archive).
+\bibitem{wasserman} S.~Wasserman, K.~Faust. \emph{Social Network Analysis:
+  Methods and Applications}. Cambridge University Press, 1994.
 \bibitem{zobel} J.~Zobel, A.~Moffat. Inverted files for text search engines.
   \emph{ACM Computing Surveys}, 38(2), 2006.
 \end{thebibliography}

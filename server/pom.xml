@@ -47,15 +47,6 @@
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
     </dependency>
-    <!-- schéma de la base versionné dans src/main/resources/db/migration -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-flyway</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-database-postgresql</artifactId>
-    </dependency>
     <!-- lecture du catalogue de Gutenberg (CSV avec retours à la ligne entre guillemets) -->
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -71,11 +62,6 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-jdbc-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-flyway-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
